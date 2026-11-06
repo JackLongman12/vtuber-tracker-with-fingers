@@ -6,4 +6,4 @@ tools/release.py sets VERSION when it publishes a release; the app compares it w
 VERSION = "1.0.0"
 
 # "owner/repository" on GitHub whose releases the app updates from; empty = no update checks
-GITHUB_REPO = ""
+GITHUB_REPO = "JackLongman12/vtuber-tracker-with-fingers"
