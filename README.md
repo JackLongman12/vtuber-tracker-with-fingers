@@ -19,9 +19,9 @@ download it and double-click. The first start unpacks it once (about half a minu
 offers updates by itself. Windows may warn about an unknown publisher (the app isn't code-signed): *More info* →
 *Run anyway*. Optional extra: the WiLoR finger helper needs its own setup (see [WiLoR fingers](#wilor-fingers-3d-hand-model-gpu)).
 
-## Experimental: v1.1 (branch `v1.1-experimental`)
-Trial versions are published as **pre-releases** on the Releases page: the app never updates to one by itself, and
-the Download link above stays on the newest full release. New in v1.1:
+## New in v1.1
+(Trial versions can be published as **pre-releases** from a branch, `tools/release.py --prerelease --branch ...`:
+the app never updates to one by itself, and the Download link above stays on the newest full release.)
 - **Setup guide** on first start: camera, lighting tips, tracking and neutral pose, connecting your VTuber app.
   Getting started → *Show the setup guide* opens it again.
 - **Connection check** (Check setup page, and in the guide): shows which app is listening for the avatar on port
