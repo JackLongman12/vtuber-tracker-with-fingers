@@ -12,8 +12,15 @@ publishing updates.
 A free hobby project for personal, non-commercial use: the code is MIT, but some of the models and the data they
 were trained on are non-commercial (see [License](#license)).
 
+## Download
+**[Download AvatarStudio.exe](https://github.com/JackLongman12/vtuber-tracker-with-fingers/releases/latest/download/AvatarStudio.exe)**
+(Windows 10/11, about 500 MB): one file with everything inside - models, 3D viewer, all tools. No Python, no setup:
+download it and double-click. The first start unpacks it once (about half a minute); later starts are quick, and it
+offers updates by itself. Windows may warn about an unknown publisher (the app isn't code-signed): *More info* →
+*Run anyway*. Optional extra: the WiLoR finger helper needs its own setup (see [WiLoR fingers](#wilor-fingers-3d-hand-model-gpu)).
+
 ## Quick start
-Double-click **`Distributions\AvatarStudio.exe`** - the whole app is that one file: one window with your camera,
+Double-click **`AvatarStudio.exe`** (or, after building it yourself, `Distributions\AvatarStudio.exe`) - the whole app is that one file: one window with your camera,
 your 3D avatar, the settings and every tool (calibration, avatar test, latency test, face training, gestures,
 smoothing, motion capture). From the project folder:
 ```bash
