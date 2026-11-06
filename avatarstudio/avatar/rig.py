@@ -817,6 +817,9 @@ class AvatarRig:
                 off = q_from_mat(mb.T @ m)
                 self._head_offset = off if self._head_offset is None else q_slerp(self._head_offset, off, 0.3)
         elif mb is not None and not face_hidden:
+            # (a full turn reads 10-20 deg short: the face mesh already under-reads just before it's lost. Making the
+            # body model's turn since then bigger didn't help: x1.6 moved the far ends 6 deg, and the head was
+            # further off when the face came back)
             m, src = mb @ mat_from_q(self._head_offset if self._head_offset is not None else BODY_HEAD_OFFSET), "body"
         else:
             self._head_src = self._head_switch = None

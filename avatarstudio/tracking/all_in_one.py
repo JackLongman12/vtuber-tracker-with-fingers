@@ -270,6 +270,23 @@ def analyze_hand(pts, wp, side, score, w, h, f):
     }
 
 
+PHANTOM_REACH = 3.5  # body sizes (see phantom_hand)
+
+
+def phantom_hand(hand, body):
+    """A hand the hand model reports where no arm can be: its wrist further than PHANTOM_REACH body sizes (shoulder
+    width, or twice the ear gap when side-on) from both of the body model's wrists. Turned away from the camera, the
+    hand model found a "hand" in the hair at the back of the head; the rig then froze the head as if a hand covered
+    the face and pulled the avatar's arm up to it. Real hands on the test takes: at most 2.7 (2.1-2.7 when the body
+    model lost a hand near the face side-on); the phantom: 4.7-6.5."""
+    if body is None:
+        return False
+    p = body["_pts"]
+    size = max(float(np.linalg.norm(p[11, :2] - p[12, :2])), 2 * float(np.linalg.norm(p[7, :2] - p[8, :2])), 1.0)
+    reach = min(float(np.linalg.norm(hand["_pts"][0, :2] - p[i, :2])) for i in (15, 16))
+    return reach > PHANTOM_REACH * size
+
+
 def palm_facing(wp, side):
     """Which side of the hand faces the camera, from the palm's surface normal.
     palm_angle: 0 = palm squarely toward the camera, 90 = edge-on, 180 = back of the hand toward the camera."""
@@ -609,6 +626,7 @@ class AllInOneTracker:
             size = np.linalg.norm(hand["_pts"][0, :2] - hand["_pts"][9, :2])
             if all(np.linalg.norm(hand["_pts"][0, :2] - o["_pts"][0, :2]) > 0.5 * size for o in out["hands"]):
                 out["hands"].append(hand)
+        out["hands"] = [hand for hand in out["hands"] if not phantom_hand(hand, out["body"])]
         self._assign_sides(out["hands"], out["body"], rt)
         self._prev_hands, self._prev_body = out["hands"], out["body"]
 
