@@ -216,3 +216,11 @@ input[type=range] { width: 150px; accent-color: var(--accent); }
   .prompt { transform: translateX(calc(-50% + 32px)); }
   .select select { max-width: 150px; }
 }
+
+/* is a VTuber app listening? (Check page, first-run guide) */
+.conn { display: flex; flex-direction: column; gap: 6px; margin: 10px 0 4px; }
+.conn-row { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--text-2); line-height: 1.4; }
+.conn-row:not(.ok) .i { color: var(--warn); }
+.conn-row .i { flex: none; margin-top: 2px; }
+.conn-row.ok { color: var(--text); }
+.conn-row.ok .i { color: var(--ok); }

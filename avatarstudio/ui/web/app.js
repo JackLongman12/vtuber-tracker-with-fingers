@@ -292,6 +292,7 @@ function showPage(name) {
   if (name === 'settings') loadSettings();
   if (name === 'start') loadChecklist();
   if (name === 'personalize') loadGestures();
+  if (name === 'check') checkConnections();
   render();
 }
 $$('.nav-item').forEach((b) => (b.onclick = () => showPage(b.dataset.page)));
@@ -530,6 +531,28 @@ function buildSettings() {
   };
   $('#btn-uninstall').onclick = openUninstall;
 }
+
+// ---------------------------------------------------------------- is a VTuber app listening? (engine/connections.py)
+const CONN_HELP = {
+  vmc: 'Nothing is listening on port 39539. In your VTuber app turn on VMC / OSC receiving on port 39539 (VSeeFace: General settings › OSC/VMC receiver › Enable; VNyan and Warudo: VMC receiver).',
+  vts: 'VTube Studio isn\'t running (or its plugin API is off: Settings › Start API, port 8001). Only needed for Live2D models.',
+};
+async function checkConnections(target = '#conn-status') {
+  const el = $(target);
+  if (!el) return null;
+  el.innerHTML = '<span class="muted small">Checking…</span>';
+  const r = await call('check_connections');
+  if (r.error) { el.innerHTML = `<p class="error small">${esc(r.error)}</p>`; return r; }
+  const row = (key, label) => {
+    const c = r[key];
+    return c.listening
+      ? `<div class="conn-row ok"><svg class="i"><use href="#i-checks"/></svg><span><b>${esc(c.app || 'An app')}</b> is ready for ${label} on port ${c.port}</span></div>`
+      : `<div class="conn-row"><svg class="i"><use href="#i-info"/></svg><span>${esc(CONN_HELP[key])}</span></div>`;
+  };
+  el.innerHTML = row('vmc', 'the avatar (VMC)') + row('vts', 'face tracking (VTube Studio)');
+  return r;
+}
+$('#btn-conn-check').onclick = () => checkConnections();
 
 // ---------------------------------------------------------------- uninstall (core/uninstall.py)
 async function openUninstall() {

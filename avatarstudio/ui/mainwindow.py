@@ -415,6 +415,11 @@ class AppApi:
         time.sleep(1.0)  # (the page shows "Restarting..." for a moment)
         self._window.destroy()  # (main() then ends this process; the new version is starting)
 
+    def check_connections(self):
+        """Which VTuber app (if any) is there to receive the avatar (engine/connections.py)."""
+        from avatarstudio.engine import connections
+        return connections.receivers()
+
     # ------------------------------------------------------------ uninstall (core/uninstall.py)
     def uninstall_plan(self):
         from avatarstudio.core import uninstall
