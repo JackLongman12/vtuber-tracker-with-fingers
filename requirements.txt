@@ -1,0 +1,21 @@
+mediapipe
+# ONNX Runtime (GPU models, speech detection, mouth model): one package per OS, for its GPU (os_support.py)
+onnxruntime-directml; sys_platform == "win32"   # any DirectX 12 GPU (DirectML)
+onnxruntime; sys_platform != "win32"            # macOS: includes Core ML (Metal GPU / Neural Engine). Linux: CPU
+#   only; for the GPU replace it with onnxruntime-gpu (NVIDIA, CUDA 12), onnxruntime-rocm (AMD) or
+#   onnxruntime-openvino (Intel)
+websockets    # 3D viewer stream, settings page, VTube Studio
+sounddevice   # microphone lip sync (installed with mediapipe; Linux also needs the system's libportaudio2)
+scikit-learn  # custom gestures, mouth model
+scipy         # (installed with scikit-learn)
+pynput        # Ctrl+Alt hotkeys (macOS: allow it under Privacy > Accessibility; Linux: X11 only, not Wayland)
+psutil        # memory stats for long runs
+pystray; sys_platform == "win32"   # launcher tray icon (Windows only)
+pywebview     # 3D viewer and settings page in their own windows (Windows: Edge WebView2, installs pythonnet;
+#   macOS: installs pyobjc; Linux: use pywebview[gtk] or pywebview[qt])
+pillow        # (tray icon image; installed with pystray)
+pyinstaller; sys_platform == "win32"   # build_dist.py (the one-file app, Windows)
+# mediapipe pulls in opencv-contrib-python 5.x; keep exactly one OpenCV package, on 4.x:
+#   pip uninstall -y opencv-python opencv-contrib-python && pip install "opencv-contrib-python<5"
+opencv-contrib-python<5
+# The WiLoR finger helper has its own environment (.venv_wilor, PyTorch): see README "WiLoR fingers".

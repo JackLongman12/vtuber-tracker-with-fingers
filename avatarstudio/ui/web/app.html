@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Avatar Studio</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<!-- icons: 24 x 24 strokes, used as <svg class="i"><use href="#i-name"/></svg> -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="i-live" viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="2.5"/><path d="M16 10.5l5-3v9l-5-3z"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 12h3M11 12h9M4 17h11M19 17h1"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="17" r="2"/></symbol>
+  <symbol id="i-smile" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5a4.5 4.5 0 0 0 7 0M9 9.5h.01M15 9.5h.01"/></symbol>
+  <symbol id="i-film" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M7.5 4v16M16.5 4v16M3 9h4.5M3 15h4.5M16.5 9H21M16.5 15H21"/></symbol>
+  <symbol id="i-checks" viewBox="0 0 24 24"><path d="M10 6.5h10M10 12h10M10 17.5h10M4 6.5l1.2 1.2L7.5 5.4M4 12l1.2 1.2 2.3-2.3M4 17.5l1.2 1.2 2.3-2.3"/></symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4M5 4.5c3-2 6 2 9 0s3.5-.5 5 0v8c-1.5-.5-2-2-5 0s-6-2-9 0"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="2"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5.5v13M15 5.5v13"/></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="2.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22"/></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></symbol>
+  <symbol id="i-hand" viewBox="0 0 24 24"><path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V11M11 10.5V4a1.5 1.5 0 0 1 3 0v6.5M14 10.5V5.5a1.5 1.5 0 0 1 3 0V12M17 11v-1.5a1.5 1.5 0 0 1 3 0V15a6 6 0 0 1-6 6h-1.5a6 6 0 0 1-5-2.7l-3-4.6a1.5 1.5 0 0 1 2.5-1.7L8 13.5"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15.5V4M7.5 8.5L12 4l4.5 4.5M4.5 15v3.5a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5V15"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3.5 7.5a2 2 0 0 1 2-2h4l2 2h7a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/></symbol>
+  <symbol id="i-record" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5" fill="currentColor"/></symbol>
+  <symbol id="i-wave" viewBox="0 0 24 24"><path d="M3 12c2.5-5.5 5.5-5.5 9 0s6.5 5.5 9 0"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/></symbol>
+  <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M12 14l4-4.5M3.8 17.5a9 9 0 1 1 16.4 0"/></symbol>
+  <symbol id="i-cast" viewBox="0 0 24 24"><path d="M4.5 15.5a4 4 0 0 1 4 4M4.5 11.5a8 8 0 0 1 8 8M4.5 7.5a12 12 0 0 1 12 12"/><circle cx="4.75" cy="19.25" r=".75" fill="currentColor"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.8h.01"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8.5a2 2 0 0 1 2-2h1.5l1.5-2h6l1.5 2H18a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><circle cx="12" cy="12.5" r="3.5"/></symbol>
+  <symbol id="i-gesture" viewBox="0 0 24 24"><path d="M9 12.5V4.5a1.5 1.5 0 0 1 3 0v6M12 10.5l1.5-6.2a1.5 1.5 0 0 1 2.9.7L15 11M15 11.5v0a2 2 0 0 1 3 1.7V15a6 6 0 0 1-6 6h-1a6 6 0 0 1-5.3-3.2L4.5 15.5a1.5 1.5 0 0 1 2.6-1.5L9 16.5"/></symbol>
+</defs></svg>
+
+<div class="app">
+  <header class="topbar">
+    <div class="brand"><div class="logo"><svg viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.5"/><path d="M5.5 19.5a6.5 6.5 0 0 1 13 0"/></svg></div><span>Avatar Studio</span></div>
+    <div id="engine-pill" class="pill">Not tracking</div>
+    <div class="spacer"></div>
+    <button id="btn-update" class="btn update hidden" title="A new version of Avatar Studio is available"><svg class="i"><use href="#i-upload"/></svg><span>Update</span></button>
+    <label class="select" title="Camera"><svg class="i"><use href="#i-camera"/></svg><select id="sel-camera" aria-label="Camera"><option>Searching…</option></select></label>
+    <label class="select" title="Microphone"><svg class="i"><use href="#i-mic"/></svg><select id="sel-mic" aria-label="Microphone"></select></label>
+    <button id="btn-track" class="btn primary big"><svg class="i"><use href="#i-play"/></svg><span>Start tracking</span></button>
+  </header>
+
+  <nav class="sidebar" aria-label="Pages">
+    <button class="nav-item active" data-page="live" title="Live"><svg class="i"><use href="#i-live"/></svg><span>Live</span></button>
+    <button class="nav-item" data-page="settings" title="Settings"><svg class="i"><use href="#i-sliders"/></svg><span>Settings</span></button>
+    <button class="nav-item" data-page="personalize" title="Personalize"><svg class="i"><use href="#i-smile"/></svg><span>Personalize</span></button>
+    <button class="nav-item" data-page="mocap" title="Motion capture"><svg class="i"><use href="#i-film"/></svg><span>Motion capture</span></button>
+    <button class="nav-item" data-page="check" title="Check setup"><svg class="i"><use href="#i-checks"/></svg><span>Check setup</span></button>
+    <div class="nav-gap"></div>
+    <button class="nav-item" data-page="start" title="Getting started"><svg class="i"><use href="#i-flag"/></svg><span>Getting started</span></button>
+    <div class="version" id="version"></div>
+  </nav>
+
+  <main>
+    <!-- ============================================================ Live -->
+    <section class="page active" id="page-live">
+      <div class="page-head">
+        <div class="seg" id="layout" role="group" aria-label="Layout">
+          <button data-layout="split" class="on">Side by side</button>
+          <button data-layout="avatar">Avatar</button>
+          <button data-layout="camera">Camera</button>
+        </div>
+        <div class="spacer"></div>
+        <div class="group" id="overlays" title="What's drawn on the camera picture">
+          <button class="chip" data-setting="show_mesh" title="Face mesh (M)">Face mesh</button>
+          <button class="chip" data-setting="show_body" title="Body skeleton (B)">Skeleton</button>
+          <button class="chip" data-setting="show_face_monitor" title="Mouth close-up and face shapes (F)">Face monitor</button>
+          <button class="chip" data-setting="show_panel" title="Depth panel (H)">Depth panel</button>
+        </div>
+        <button class="btn" id="btn-vrm" title="Your avatar: VRM, glTF / GLB, FBX or MMD (PMX / PMD), with its textures or as a .zip (or drop it onto the avatar). Live2D models run in VTube Studio."><svg class="i"><use href="#i-upload"/></svg>Load avatar</button>
+      </div>
+      <div class="stage split" id="stage">
+        <div class="pane camera-pane">
+          <img id="camera" alt="Camera picture with what's tracked">
+          <div class="empty" id="camera-empty">
+            <svg class="i big"><use href="#i-live"/></svg>
+            <h3 id="camera-empty-title">Your camera shows here</h3>
+            <p id="camera-empty-text">Start tracking to see what the studio sees.</p>
+            <button class="btn primary" data-start="live"><svg class="i"><use href="#i-play"/></svg>Start tracking</button>
+          </div>
+          <span class="pane-label">Camera</span>
+        </div>
+        <div class="pane avatar-pane">
+          <iframe id="avatar" src="index.html?embed=1" title="3D avatar"></iframe>
+          <div class="empty passive" id="avatar-empty">
+            <svg class="i big"><use href="#i-user"/></svg>
+            <h3>Your avatar shows here</h3>
+            <p>Drop your model here (VRM, GLB, FBX, PMX, its folder or a .zip) or use Load avatar. It moves once tracking runs. Live2D models run in VTube Studio.</p>
+          </div>
+          <span class="pane-label" id="avatar-label">Avatar · drop your model here</span>
+        </div>
+      </div>
+      <div class="dock">
+        <div class="group">
+          <span class="group-label">Calibrate</span>
+          <button class="btn" data-key="c" title="Sit as usual, look at the screen and hold still for about a second"><svg class="i"><use href="#i-target"/></svg>Neutral pose<kbd>C</kbd></button>
+          <button class="btn" data-key="v" title="Say A, I, U, E, O when asked (also teaches microphone lip sync your voice)"><svg class="i"><use href="#i-mic"/></svg>Vowels<kbd>V</kbd></button>
+          <button class="btn" data-key="k" title="3 s open hands, then 3 s tight fists"><svg class="i"><use href="#i-hand"/></svg>Hands<kbd>K</kbd></button>
+          <button class="btn" data-key="g" title="Follow the dots with your eyes, head still (full screen)"><svg class="i"><use href="#i-eye"/></svg>Eye gaze<kbd>G</kbd></button>
+          <button class="btn" data-key="p" id="btn-pause" title="The avatar holds its pose; tracking stops"><svg class="i"><use href="#i-pause"/></svg><span>Pause</span><kbd>P</kbd></button>
+        </div>
+        <div class="group" id="expressions"><span class="group-label">Expressions</span></div>
+      </div>
+      <footer class="statusbar">
+        <span class="stat"><span class="dot" id="st-face-dot"></span>Face <b id="st-face">–</b></span>
+        <span class="stat">Hands <b id="st-hands">–</b></span>
+        <span class="stat">Calibration <b id="st-cal">–</b></span>
+        <span class="stat"><svg class="i" style="width:15px;height:15px"><use href="#i-mic"/></svg><span class="meter"><span id="st-mic"></span></span></span>
+        <span class="stat">Fingers <b id="st-wilor">–</b></span>
+        <span class="stat" id="st-cams-wrap">Extra cameras <b id="st-cams">none</b></span>
+        <span class="spacer"></span>
+        <span class="stat" title="VTuber apps receive the avatar here (VMC protocol)"><svg class="i" style="width:15px;height:15px"><use href="#i-cast"/></svg>VMC <b>127.0.0.1:39539</b></span>
+        <span class="stat" title="OBS browser source">OBS <b>127.0.0.1:8000</b></span>
+      </footer>
+    </section>
+
+    <!-- ============================================================ Settings -->
+    <section class="page" id="page-settings">
+      <div class="page-head"><div><h1>Settings</h1><p class="lead" id="settings-lead">Changes apply at once and are kept.</p></div></div>
+      <div class="grid" id="settings-grid"></div>
+    </section>
+
+    <!-- ============================================================ Personalize -->
+    <section class="page" id="page-personalize">
+      <div class="page-head"><div><h1>Personalize</h1><p class="lead">Teach Avatar Studio your face and the way you move.</p></div></div>
+      <div class="grid">
+        <div class="card tool">
+          <div class="card-head"><div class="card-icon"><svg class="i"><use href="#i-smile"/></svg></div><div><h2>Train your face</h2><p class="muted small">About 2 minutes</p></div></div>
+          <p class="muted">Guided expressions teach it your smiles, winks, brows, tongue and cheeks. Follow the prompts over your camera on the Live page; Cancel stops it. Tracking pauses meanwhile.</p>
+          <div class="actions"><button class="btn primary" data-start="train_face"><svg class="i"><use href="#i-play"/></svg>Start training</button></div>
+          <div class="log hidden" data-log="train_face"></div>
+        </div>
+        <div class="card tool">
+          <div class="card-head"><div class="card-icon"><svg class="i"><use href="#i-wave"/></svg></div><div><h2>Smoothing tuned to you</h2><p class="muted small" id="smooth-state">Record a take, then tune</p></div></div>
+          <p class="muted">Record about a minute of yourself: talk, turn your head, wave, cross your hands, make fists, then sit still for 10 s. Tuning learns how much to smooth from it.</p>
+          <div class="actions">
+            <button class="btn" data-start="record_take"><svg class="i"><use href="#i-record"/></svg>Record a take</button>
+            <button class="btn" data-tool="tune-smoothing"><svg class="i"><use href="#i-wave"/></svg>Tune smoothing</button>
+          </div>
+          <div class="progress hidden" data-progress="tune-smoothing"><div class="bar"><span></span></div><span class="ptext"></span></div>
+          <div class="log hidden" data-log="tune-smoothing"></div>
+        </div>
+        <div class="card tool" id="gestures-card">
+          <div class="card-head"><div class="card-icon"><svg class="i"><use href="#i-gesture"/></svg></div><div><h2>Custom gestures</h2><p class="muted small" id="gesture-state">Your own hand signs show expressions</p></div></div>
+          <p class="muted">Record each sign for 8 seconds on the Live page, and once “none”: relaxed hands that aren't a sign. Then train. Each sign can show an expression while you hold it.</p>
+          <div id="gesture-list"></div>
+          <div class="row"><input type="text" id="gesture-name" placeholder="peace, thumbs_up, none" style="flex:1" maxlength="32"><button class="btn" id="btn-gesture-add"><svg class="i"><use href="#i-record"/></svg>Record</button></div>
+          <div class="actions"><button class="btn primary" data-tool="train-gestures"><svg class="i"><use href="#i-play"/></svg>Train</button></div>
+          <div class="log hidden" data-log="gestures"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ Motion capture -->
+    <section class="page" id="page-mocap">
+      <div class="page-head"><div><h1>Motion capture</h1><p class="lead">Clean motion from a recording, for animation and movement analysis.</p></div></div>
+      <div class="grid">
+        <div class="card tool">
+          <div class="card-head"><div class="card-icon"><svg class="i"><use href="#i-record"/></svg></div><div><h2>Record for mocap</h2><p class="muted small">On the Live page</p></div></div>
+          <p class="muted">Records the camera until you press Stop. Get your whole body in view if you want the legs.</p>
+          <div class="actions"><button class="btn primary" data-start="record_mocap"><svg class="i"><use href="#i-record"/></svg>Start recording</button></div>
+        </div>
+        <div class="card tool">
+          <div class="card-head"><div class="card-icon"><svg class="i"><use href="#i-film"/></svg></div><div><h2>Mocap a video</h2><p class="muted small">BVH, CSV, face curves, overlay video</p></div></div>
+          <p class="muted">The whole take is filtered at once, so there's no delay and much less jitter than live.</p>
+          <div class="actions">
+            <button class="btn primary" data-tool="mocap"><svg class="i"><use href="#i-folder"/></svg>Choose a video</button>
+            <button class="btn" id="btn-mocap-results"><svg class="i"><use href="#i-folder"/></svg>Open results</button>
+          </div>
+          <div class="progress hidden" data-progress="mocap"><div class="bar"><span></span></div><span class="ptext"></span></div>
+          <div class="log hidden" data-log="mocap"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ Check setup -->
+    <section class="page" id="page-check">
+      <div class="page-head"><div><h1>Check setup</h1><p class="lead">Make sure your VTuber app and your avatar move the right way.</p></div></div>
+      <div class="grid">
+        <div class="card tool">
+          <div class="card-head"><div class="card-icon"><svg class="i"><use href="#i-user"/></svg></div><div><h2>Test avatar setup</h2><p class="muted small">No camera needed</p></div></div>
+          <p class="muted">Sends 24 known poses. Compare your VTuber app's avatar with the description shown over the avatar on the Live page.</p>
+          <div class="actions"><button class="btn primary" data-start="test_pattern"><svg class="i"><use href="#i-play"/></svg>Run test</button></div>
+        </div>
+        <div class="card tool">
+          <div class="card-head"><div class="card-icon"><svg class="i"><use href="#i-gauge"/></svg></div><div><h2>Measure latency</h2><p class="muted small">Camera and microphone</p></div></div>
+          <p class="muted">Clap slowly 6 times with both hands in view: it measures the real delay from your motion to the avatar.</p>
+          <div class="actions"><button class="btn primary" data-start="latency"><svg class="i"><use href="#i-play"/></svg>Start</button></div>
+          <div class="log hidden" id="latency-result"></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div class="card-icon"><svg class="i"><use href="#i-cast"/></svg></div><div><h2>Connect your VTuber app</h2></div></div>
+          <p class="muted">Turn on VMC protocol receiving on port 39539 (VSeeFace: General settings › OSC/VMC receiver). In OBS, add a browser source with http://127.0.0.1:8000.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ Getting started -->
+    <section class="page" id="page-start">
+      <div class="page-head"><div><h1>Getting started</h1><p class="lead">A few minutes of setup makes the avatar move like you.</p></div></div>
+      <div class="grid" style="grid-template-columns: minmax(0, 720px) minmax(260px, 1fr)">
+        <div class="card"><ol class="steps" id="steps"></ol></div>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div class="card"><h2>Extras</h2><div id="info"></div></div>
+          <div class="note"><svg class="i"><use href="#i-info"/></svg><span>Keys work while this window is in front: C neutral pose, V vowels, K hands, G eye gaze, P pause, 1–9 expressions. From any window: Ctrl+Alt+C, Ctrl+Alt+P, Ctrl+Alt+1–9.</span></div>
+          <div class="actions" style="margin:0"><button class="btn" id="btn-data"><svg class="i"><use href="#i-folder"/></svg>Open your data folder</button></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="update-dialog" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="update-title">
+  <div class="modal-card">
+    <h2 id="update-title">Update available</h2>
+    <p class="muted" id="update-sub"></p>
+    <div class="notes" id="update-notes"></div>
+    <div class="progress hidden" id="update-progress"><div class="bar"><span></span></div><span class="ptext"></span></div>
+    <p class="error hidden" id="update-error"></p>
+    <div class="actions">
+      <button class="btn primary" id="btn-update-now"><svg class="i"><use href="#i-upload"/></svg>Update and restart</button>
+      <button class="btn ghost" id="btn-update-later">Later</button>
+    </div>
+  </div>
+</div>
+<div id="prompt" class="prompt hidden" role="status" aria-live="polite"></div>
+<div id="gaze" class="gaze hidden"><div class="gaze-dot" id="gaze-dot"></div><div class="gaze-text" id="gaze-text"></div></div>
+<div id="toasts" aria-live="polite"></div>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,79 @@
+# What stays out of git (docs/DEVELOPMENT.md explains each)
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.venv_wilor/
+
+# build output (tools/build_dist.py, tools/release.py)
+build_tmp/
+Distributions/
+*.spec
+
+# model files: large (the whole-body model is 229 MB, over GitHub's 100 MB limit). tools/fetch_models.py
+# downloads them from the "models" release; tools/release.py --models uploads them there
+models/
+
+# your own data in development runs: calibration, settings, recordings, trained face / mouth / gesture models,
+# VRM avatars (packaged builds keep it in %APPDATA%\AvatarStudio instead)
+data/
+
+# ...and the same kinds of files wherever they end up (a recording or export saved next to the code, a tool's
+# output folder): recordings, avatars, motion exports, trained / personal data, model weights, logs
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.webm
+*.wav
+*.vrm
+*.vrma
+*.vroid
+*.pmx
+*.pmd
+*.vmd
+*.fbx
+*.glb
+*.gltf
+*.bvh
+*_mocap/
+*.npz
+*.npy
+*.pkl
+*.joblib
+*.jsonl
+*.log
+*.onnx
+*.task
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+calibration.json
+settings.json
+smoothing.json
+face_refiner.json
+launcher.json
+vts_token.json
+hotkeys.json
+profiles/
+/gestures/
+MANO_*.pkl
+
+# secrets
+.env
+.env.*
+*.pem
+*.key
+*.pfx
+
+# made by tests/test_rig.py
+tests/images/*_tracked.jpg
+tests/images/*_pred.jpg
+
+# local tools and OS files
+.claude/
+.DS_Store
+Thumbs.db
+desktop.ini

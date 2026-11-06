@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Studio Settings</title>
+<style>
+  :root { --bg: #111418; --card: #1a1f26; --line: #2a3038; --text: #e6e8eb; --muted: #8b939c; --accent: #4fb3ff;
+          --ok: #5ad19a; --bad: #ff6b6b; --warn: #ffb547; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 system-ui, sans-serif; }
+  main { max-width: 980px; margin: 0 auto; padding: 20px 16px 40px; }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px 20px; margin-bottom: 16px; }
+  h1 { font-size: 20px; margin: 0; font-weight: 600; }
+  header a { color: var(--accent); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 14px; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 10px; font-weight: 600; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0; }
+  .row + .row { border-top: 1px solid var(--line); }
+  .row small { display: block; color: var(--muted); font-size: 12px; }
+  input[type=range] { width: 140px; accent-color: var(--accent); }
+  .val { min-width: 42px; text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+  .switch { position: relative; width: 40px; height: 22px; flex: none; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch span { position: absolute; inset: 0; background: var(--line); border-radius: 11px; cursor: pointer; transition: .15s; }
+  .switch span::after { content: ""; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px; border-radius: 50%; background: #fff; transition: .15s; }
+  .switch input:checked + span { background: var(--accent); }
+  .switch input:checked + span::after { transform: translateX(18px); }
+  button, select, input[type=text] { font: inherit; color: var(--text); background: #232a33; border: 1px solid var(--line);
+    border-radius: 8px; padding: 7px 12px; }
+  button { cursor: pointer; } button:hover { border-color: var(--accent); }
+  button.on { background: var(--accent); color: #0b1620; border-color: var(--accent); }
+  .buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+  .status { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; }
+  .status b { font-weight: 500; text-align: right; }
+  .ok { color: var(--ok); } .bad { color: var(--bad); } .warn { color: var(--warn); }
+  .meter { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; margin-top: 6px; }
+  .meter span { display: block; height: 100%; width: 0; background: var(--ok); transition: width .08s; }
+  .hint { color: var(--muted); font-size: 12px; margin-top: 8px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Avatar studio settings</h1>
+    <span id="conn" class="bad">connecting…</span>
+    <a href="/" target="_blank" data-window="viewer">open 3D viewer</a>
+  </header>
+  <div class="grid">
+    <section>
+      <h2>Status</h2>
+      <div class="status">
+        <span>Frame rate</span><b id="s-fps">–</b>
+        <span>Face</span><b id="s-face">–</b>
+        <span>Hands</span><b id="s-hands">–</b>
+        <span>Calibration</span><b id="s-cal">–</b>
+        <span>Finger model (WiLoR)</span><b id="s-wilor">–</b>
+        <span>Extra cameras</span><b id="s-cams">–</b>
+        <span>VTube Studio</span><b id="s-vts">–</b>
+        <span>Microphone</span><b id="s-mic">–</b>
+      </div>
+      <div class="meter"><span id="mic-meter"></span></div>
+    </section>
+
+    <section>
+      <h2>Calibrate</h2>
+      <div class="buttons">
+        <button data-action="calibrate">Neutral pose (C)</button>
+        <button data-action="vowels">Vowels (V)</button>
+        <button data-action="gaze">Eye gaze (G)</button>
+        <button data-action="hands">Hands: open + fist (K)</button>
+        <button data-action="reset_depth">Reset depth</button>
+        <button data-action="pause" id="pause">Pause tracking (P)</button>
+      </div>
+      <p class="hint">Neutral: relax your face and look at the screen. Vowels: say each vowel when the prompt appears
+        in the studio window. The vowel step also records your voice for microphone lip sync.
+        From any window: Ctrl+Alt+C recalibrates, Ctrl+Alt+P pauses (the avatar holds its pose).</p>
+    </section>
+
+    <section>
+      <h2>Face</h2>
+      <div class="row"><label>Expressiveness<small>exaggerate or soften all face shapes</small></label>
+        <input type="range" data-key="expressiveness" min="0.5" max="2" step="0.05"><span class="val"></span></div>
+      <div class="row"><label>Auto-range<small>stretch each shape to your own maximum</small></label>
+        <label class="switch"><input type="checkbox" data-key="auto_range"><span></span></label></div>
+      <div class="row"><label>Link blinks<small>both eyes blink together unless you clearly wink</small></label>
+        <label class="switch"><input type="checkbox" data-key="link_blinks"><span></span></label></div>
+      <div class="row"><label>Personal face refiner<small>uses your "Train Face.bat" recording, if you made one</small></label>
+        <label class="switch"><input type="checkbox" data-key="face_refiner"><span></span></label></div>
+      <div class="row"><label>Tongue / cheek puff / funnel<small>learned in "Train Face.bat"; only shapes it recognised reliably</small></label>
+        <label class="switch"><input type="checkbox" data-key="mouth_model"><span></span></label></div>
+    </section>
+
+    <section>
+      <h2>Lip sync</h2>
+      <div class="row"><label>Microphone lip sync<small>your voice helps the mouth</small></label>
+        <label class="switch"><input type="checkbox" data-key="mic_lipsync"><span></span></label></div>
+      <div class="row"><label>Voice share of the vowel<small>0 = camera only, 1 = voice only (while speaking)</small></label>
+        <input type="range" data-key="mic_weight" min="0" max="1" step="0.05"><span class="val"></span></div>
+      <div class="row"><label>Speech detection<small>only your voice opens the mouth, not typing, fans or music</small></label>
+        <label class="switch"><input type="checkbox" data-key="speech_detection"><span></span></label></div>
+      <div class="row"><label>Noise suppression<small>for loud rooms (fan, AC); makes the vowel guess a bit less exact</small></label>
+        <label class="switch"><input type="checkbox" data-key="noise_suppression"><span></span></label></div>
+    </section>
+
+    <section>
+      <h2>Motion</h2>
+      <div class="row"><label>Smoothing<small>left = smoother, right = snappier</small></label>
+        <input type="range" data-key="smoothing" min="0.4" max="2.5" step="0.05"><span class="val"></span></div>
+      <div class="row"><label>Body look-ahead (ms)<small>torso, head, arms move this much earlier; fingers and face untouched</small></label>
+        <input type="range" data-key="predict_body_ms" min="0" max="40" step="5"><span class="val"></span></div>
+      <div class="row"><label>Look-ahead, everything (ms)<small>also hands and fingers; makes them shakier</small></label>
+        <input type="range" data-key="predict_ms" min="0" max="60" step="5"><span class="val"></span></div>
+      <div class="row"><label>Body follows head<small>when your shoulders are out of view, the upper body turns a little with the head</small></label>
+        <label class="switch"><input type="checkbox" data-key="body_follows_head"><span></span></label></div>
+      <div class="row"><label>No clipping<small>hands and arms stop at the body and head instead of passing through</small></label>
+        <label class="switch"><input type="checkbox" data-key="no_clip"><span></span></label></div>
+      <div class="row"><label>Body thickness<small>for no clipping: raise it for bulky avatars / clothes</small></label>
+        <input type="range" data-key="body_size" min="0.7" max="1.6" step="0.05"><span class="val"></span></div>
+      <div class="row"><label>Idle motion<small>breathing, auto-blinks, easing back when tracking is lost</small></label>
+        <label class="switch"><input type="checkbox" data-key="idle"><span></span></label></div>
+      <div class="row"><label>Move avatar with you<small>stepping closer / sideways moves it</small></label>
+        <label class="switch"><input type="checkbox" data-key="root_motion"><span></span></label></div>
+      <div class="row"><label>Mirror avatar<small>raise right hand → avatar raises left</small></label>
+        <label class="switch"><input type="checkbox" data-key="mirror_avatar"><span></span></label></div>
+    </section>
+
+    <section>
+      <h2>Expressions</h2>
+      <div class="buttons" id="expr"></div>
+      <p class="hint">Click to toggle. Hotkeys: keys 1–9 in the studio window, or Ctrl+Alt+1–9 anywhere.
+        Edit <code>hotkeys.json</code> to change them.</p>
+    </section>
+
+    <section>
+      <h2>Performance &amp; outputs</h2>
+      <div class="row"><label>Frame-rate cap<small>0 = as fast as the camera; lower saves CPU for games</small></label>
+        <input type="range" data-key="max_fps" min="0" max="30" step="5"><span class="val"></span></div>
+      <div class="row"><label>VTube Studio (Live2D)<small>send face tracking to VTube Studio on port 8001</small></label>
+        <label class="switch"><input type="checkbox" data-key="vts"><span></span></label></div>
+      <div class="row"><label>GPU whole-body model<small>keeps left/right right when hands cross (uses the GPU)</small></label>
+        <label class="switch"><input type="checkbox" data-key="wholebody"><span></span></label></div>
+      <div class="row"><label>GPU tracking<small>body and face models on the GPU: less delay per frame (from the next start)</small></label>
+        <label class="switch"><input type="checkbox" data-key="gpu_tracking"><span></span></label></div>
+      <div class="row"><label>WiLoR fingers<small>3D hand model for finger shapes (GPU helper; needs .venv_wilor)</small></label>
+        <label class="switch"><input type="checkbox" data-key="wilor_fingers"><span></span></label></div>
+    </section>
+
+    <section>
+      <h2>Studio window</h2>
+      <div class="row"><label>Face mesh</label><label class="switch"><input type="checkbox" data-key="show_mesh"><span></span></label></div>
+      <div class="row"><label>Body skeleton</label><label class="switch"><input type="checkbox" data-key="show_body"><span></span></label></div>
+      <div class="row"><label>Face monitor</label><label class="switch"><input type="checkbox" data-key="show_face_monitor"><span></span></label></div>
+      <div class="row"><label>Depth panel</label><label class="switch"><input type="checkbox" data-key="show_panel"><span></span></label></div>
+    </section>
+
+    <section>
+      <h2>Profiles</h2>
+      <p class="hint" style="margin-top:0">A profile stores these settings and your calibration, e.g. one per room or chair.</p>
+      <div class="buttons">
+        <input type="text" id="pname" placeholder="profile name" style="flex:1;min-width:120px">
+        <button id="psave">Save</button>
+      </div>
+      <div class="buttons" style="margin-top:8px">
+        <select id="plist" style="flex:1;min-width:120px"></select>
+        <button id="pload">Load</button>
+      </div>
+      <div class="buttons" style="margin-top:12px">
+        <button id="reset" title="Every setting on this page back to its default; your calibration is kept">Reset all settings to defaults</button>
+      </div>
+    </section>
+  </div>
+</main>
+<script>
+const url = new URLSearchParams(location.search).get('ws') || `ws://${location.hostname || '127.0.0.1'}:8765`;
+let ws, editing = 0;
+const send = (m) => ws && ws.readyState === 1 && ws.send(JSON.stringify(m));
+const fmt = (k, v) => k === 'max_fps' ? (+v ? `${v}` : 'off') : k.startsWith('predict') ? `${v}` : (+v).toFixed(2);
+
+document.querySelectorAll('[data-key]').forEach((el) => {
+  const k = el.dataset.key;
+  const ev = el.type === 'range' ? 'input' : 'change';
+  el.addEventListener(ev, () => {
+    editing = performance.now();
+    const v = el.type === 'checkbox' ? el.checked : parseFloat(el.value);
+    if (el.type === 'range') el.nextElementSibling.textContent = fmt(k, v);
+    send({ type: 'set', values: { [k]: v } });
+  });
+});
+document.querySelectorAll('[data-action]').forEach((b) => b.onclick = () => send({ type: 'action', name: b.dataset.action }));
+// in Avatar Studio's own window (pywebview), "open 3D viewer" opens the viewer window instead of a browser tab
+addEventListener('pywebviewready', () => document.querySelectorAll('[data-window]').forEach((a) => a.onclick = (e) => {
+  e.preventDefault(); pywebview.api.open(a.dataset.window);
+}));
+document.getElementById('psave').onclick = () => {
+  const name = document.getElementById('pname').value.trim();
+  if (name) send({ type: 'save_profile', name });
+};
+document.getElementById('reset').onclick = () => {
+  if (confirm('Set every setting back to its default? Your calibration is kept.')) send({ type: 'action', name: 'reset_settings' });
+};
+document.getElementById('pload').onclick = () => {
+  const name = document.getElementById('plist').value;
+  if (name) send({ type: 'load_profile', name });
+};
+
+function setText(id, text, cls) { const el = document.getElementById(id); el.textContent = text; el.className = cls || ''; }
+
+function onStatus(s) {
+  // don't fight the user while they drag a slider
+  if (performance.now() - editing > 600) {
+    document.querySelectorAll('[data-key]').forEach((el) => {
+      const v = s.settings[el.dataset.key];
+      if (v === undefined) return;
+      if (el.type === 'checkbox') el.checked = v;
+      else { el.value = v; el.nextElementSibling.textContent = fmt(el.dataset.key, v); }
+    });
+  }
+  setText('s-fps', s.paused ? 'paused' : `${s.fps.toFixed(0)} fps`, s.paused ? 'warn' : (s.fps >= 20 ? 'ok' : 'warn'));
+  const pb = document.getElementById('pause');
+  pb.textContent = s.paused ? 'Resume tracking (P)' : 'Pause tracking (P)'; pb.classList.toggle('on', !!s.paused);
+  const cams = s.cameras || [];
+  setText('s-cams', cams.length ? cams.map((c) => `${c.name.replace('camera', 'cam ')}: ${c.aligned ? 'lined up' : (c.seen ? 'press C' : 'no picture')}`).join(', ') : 'none',
+          !cams.length ? '' : cams.every((c) => c.aligned) ? 'ok' : 'warn');
+  const wl = s.wilor || 'off';
+  setText('s-wilor', wl === 'running' ? 'running' : wl === 'starting' ? 'starting…' : wl === 'failed' ? 'stopped (MediaPipe fingers)' : 'off',
+          wl === 'running' ? 'ok' : wl === 'off' ? '' : 'warn');
+  setText('s-face', s.face ? 'tracked' : 'not visible', s.face ? 'ok' : 'warn');
+  setText('s-hands', s.hands ? `${s.hands} tracked` : 'none');
+  setText('s-cal', s.calibrated ? (s.vowels ? 'neutral + vowels' : 'neutral only') : 'not calibrated',
+          s.calibrated ? (s.vowels ? 'ok' : 'warn') : 'bad');
+  setText('s-vts', s.vts, /connected/.test(s.vts) ? 'ok' : (s.vts === 'off' ? '' : 'warn'));
+  setText('s-mic', s.mic === null ? 'off' : `${Math.round(s.mic * 100)}%`);
+  document.getElementById('mic-meter').style.width = `${Math.round((s.mic || 0) * 100)}%`;
+  const ex = document.getElementById('expr');
+  if (ex.dataset.keys !== JSON.stringify(s.hotkeys)) {
+    ex.dataset.keys = JSON.stringify(s.hotkeys);
+    ex.innerHTML = '';
+    for (const [key, name] of Object.entries(s.hotkeys)) {
+      const b = document.createElement('button');
+      b.textContent = `${key} · ${name}`; b.dataset.expr = name;
+      b.onclick = () => send({ type: 'action', name: 'toggle_expression', arg: name });
+      ex.appendChild(b);
+    }
+  }
+  ex.querySelectorAll('button').forEach((b) => b.classList.toggle('on', s.active.includes(b.dataset.expr)));
+  const pl = document.getElementById('plist');
+  if (pl.dataset.list !== JSON.stringify(s.profiles)) {
+    pl.dataset.list = JSON.stringify(s.profiles);
+    pl.innerHTML = s.profiles.length ? s.profiles.map((p) => `<option>${p.replace(/</g, '&lt;')}</option>`).join('')
+                                     : '<option value="">no profiles yet</option>';
+  }
+}
+
+let retry = 500;  // waits longer between tries (up to 5 s) while the studio is off
+function connect() {
+  ws = new WebSocket(url);
+  ws.onopen = () => { setText('conn', 'connected to studio', 'ok'); retry = 500; };
+  ws.onclose = () => { setText('conn', 'studio not running – retrying…', 'bad'); setTimeout(connect, retry); retry = Math.min(retry * 1.6, 5000); };
+  ws.onmessage = (e) => { const d = JSON.parse(e.data); if (d.status) onStatus(d.status); };
+}
+connect();
+</script>
+</body>
+</html>
