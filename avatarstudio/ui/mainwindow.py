@@ -415,6 +415,24 @@ class AppApi:
         time.sleep(1.0)  # (the page shows "Restarting..." for a moment)
         self._window.destroy()  # (main() then ends this process; the new version is starting)
 
+    # ------------------------------------------------------------ uninstall (core/uninstall.py)
+    def uninstall_plan(self):
+        from avatarstudio.core import uninstall
+        return uninstall.plan()
+
+    def uninstall(self, delete_data=False):
+        """Tracking and tools stop, the clean-up script starts, the window closes (the script waits for that)."""
+        from avatarstudio.core import uninstall
+        if not uninstall.app_file():
+            return uninstall.start(bool(delete_data))  # (the error: development run / not Windows)
+        self.stop()
+        for j in self._jobs.values():
+            j.stop()
+        r = uninstall.start(bool(delete_data))
+        if r["ok"]:
+            threading.Thread(target=lambda: (time.sleep(1.5), self._window.destroy()), daemon=True).start()
+        return r
+
     # ------------------------------------------------------------ window
     def fullscreen(self, on):
         """Full screen for the eye-gaze calibration dots (and back)."""

@@ -241,6 +241,8 @@ class Launcher:
         if app_exe() and sys.platform == "win32":  # (Start menu + desktop .lnk shortcuts: Windows only)
             buttons["Personalize"].append(("Shortcut on desktop + Start", self.shortcuts,
                                            "Adds Avatar Studio to the Start menu and the desktop."))
+            buttons["Check"].append(("Uninstall...", self.uninstall,
+                                     "Removes Avatar Studio from this PC (your data is kept unless you choose)."))
         for col, (title, items) in enumerate(buttons.items()):
             box = ttk.LabelFrame(groups, text=title, padding=6)
             box.grid(row=0, column=col, sticky="nsew", padx=(0 if col == 0 else 8, 0))
@@ -472,6 +474,28 @@ class Launcher:
             messagebox.showinfo("Shortcuts", "Made:\n" + "\n".join(made))
         else:
             messagebox.showwarning("Shortcuts", f"Could not make the shortcuts. {err}")
+
+    def uninstall(self):
+        from avatarstudio.core import uninstall
+        p = uninstall.plan()
+        total = sum(mb for _, mb in p["app"])
+        if not messagebox.askokcancel("Uninstall Avatar Studio", f"Remove Avatar Studio from this PC (about {total} MB)?"
+                                      "\n\nThe app, its unpacked files, caches and shortcuts are deleted."):
+            return
+        data = (f"\n\n{p['data'][0]} ({p['data'][1]} MB)" if p["data"] else "")
+        answer = messagebox.askyesnocancel("Your data", "Also delete your data: calibration, settings, recordings, "
+                                           "face and gesture training, profiles? It goes to the Recycle Bin."
+                                           f"{data}\n\nYes: delete it too.  No: keep it.")
+        if answer is None:
+            return
+        self.stop_studio()
+        r = uninstall.start(answer)
+        if not r["ok"]:
+            messagebox.showwarning("Uninstall", r["error"])
+            return
+        if self.tray is not None:  # (closing without saving the window's prefs: they're being removed)
+            self.tray.stop()
+        self.root.destroy()
 
     def refresh(self):
         """The checklist: done steps ticked, the first open one marked as next, then the extras."""

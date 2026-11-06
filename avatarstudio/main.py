@@ -8,6 +8,7 @@
   AvatarStudio.exe tune-smoothing take.mp4   tune motion smoothing from a recording
   AvatarStudio.exe gestures record NAME      custom gestures (record / train / list / delete)
   AvatarStudio.exe mocap take.mp4            offline motion capture from a video (BVH, CSV, joint angles)
+  AvatarStudio.exe uninstall [--delete-data] remove the app from this PC (your data is kept unless asked)
   AvatarStudio.exe --test-pattern ...        any other options go to the studio (older launchers)
 """
 import importlib
@@ -16,7 +17,7 @@ import sys
 
 TOOLS = {"train-face": "avatarstudio.personal.face_refiner", "tune-smoothing": "avatarstudio.personal.tune_smoothing",
          "gestures": "avatarstudio.personal.gestures", "studio": "avatarstudio.engine.studio",
-         "mocap": "avatarstudio.mocap"}
+         "mocap": "avatarstudio.mocap", "uninstall": "avatarstudio.core.uninstall"}
 
 
 def main():

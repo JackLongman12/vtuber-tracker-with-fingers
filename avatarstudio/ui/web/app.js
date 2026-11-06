@@ -491,6 +491,9 @@ function buildSettings() {
     <div class="row"><input type="text" id="profile-name" placeholder="Desk, evening" style="flex:1"><button class="btn" id="btn-profile-save">Save</button></div>
     <div class="row"><select class="plain" id="profile-list" style="flex:1"></select><button class="btn" id="btn-profile-load">Load</button></div>
     <div class="actions"><button class="btn danger" id="btn-reset">Reset all settings</button></div>
+  </div>
+  <div class="card"><h2>Uninstall</h2><p class="muted small" style="margin:4px 0 8px">Removes Avatar Studio from this PC: the app, its unpacked files and caches, and its shortcuts. Your data (calibration, recordings, training) is kept unless you choose otherwise.</p>
+    <div class="actions"><button class="btn danger" id="btn-uninstall">Uninstall Avatar Studio…</button></div>
   </div>`;
   grid.innerHTML = html;
   $$('[data-set]', grid).forEach((el) => {
@@ -525,7 +528,32 @@ function buildSettings() {
     if (!send({ type: 'action', name: 'reset_settings' })) await call('reset_settings');
     setTimeout(loadSettings, 500);
   };
+  $('#btn-uninstall').onclick = openUninstall;
 }
+
+// ---------------------------------------------------------------- uninstall (core/uninstall.py)
+async function openUninstall() {
+  const p = await call('uninstall_plan');
+  const total = p.app.reduce((s, [, mb]) => s + mb, 0);
+  $('#uninstall-list').innerHTML = p.app.map(([path, mb]) => `<li><code>${esc(path)}</code> <span class="muted">${mb} MB</span></li>`).join('')
+    || '<li class="muted">Nothing found</li>';
+  $('#uninstall-sub').textContent = p.packaged
+    ? `Frees about ${total} MB. Avatar Studio closes, and its files are gone a few seconds later.`
+    : 'This is a development run: there is nothing installed to remove.';
+  $('#uninstall-data-path').textContent = p.data ? `${p.data[0]} (${p.data[1]} MB)` : '';
+  $('#uninstall-data').checked = false;
+  $('#uninstall-error').classList.add('hidden');
+  $('#btn-uninstall-now').disabled = !p.packaged;
+  $('#uninstall-dialog').classList.remove('hidden');
+}
+$('#btn-uninstall-cancel').onclick = () => $('#uninstall-dialog').classList.add('hidden');
+$('#btn-uninstall-now').onclick = async () => {
+  $('#btn-uninstall-now').disabled = true;
+  const r = await call('uninstall', $('#uninstall-data').checked);
+  if (r.ok) { $('#uninstall-sub').textContent = 'Uninstalling… Avatar Studio is closing.'; return; }
+  $('#uninstall-error').textContent = r.error; $('#uninstall-error').classList.remove('hidden');
+  $('#btn-uninstall-now').disabled = false;
+};
 async function loadSettings() {
   if (!tracking()) {
     const r = await call('get_settings');

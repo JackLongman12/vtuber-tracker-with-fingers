@@ -228,6 +228,23 @@
     </div>
   </div>
 </div>
+<div id="uninstall-dialog" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="uninstall-title">
+  <div class="modal-card">
+    <h2 id="uninstall-title">Uninstall Avatar Studio?</h2>
+    <p class="muted" id="uninstall-sub"></p>
+    <p class="muted small" style="margin:8px 0 4px">These are removed:</p>
+    <ul class="small" id="uninstall-list" style="margin:0 0 10px;padding-left:18px;word-break:break-all"></ul>
+    <label class="small" style="display:flex;gap:8px;align-items:flex-start">
+      <input type="checkbox" id="uninstall-data">
+      <span>Also delete my data: calibration, settings, recordings, face and gesture training, profiles. It goes to the Recycle Bin, so it can still be restored.<br><code class="muted" id="uninstall-data-path"></code></span>
+    </label>
+    <p class="error hidden" id="uninstall-error"></p>
+    <div class="actions">
+      <button class="btn danger" id="btn-uninstall-now">Uninstall</button>
+      <button class="btn ghost" id="btn-uninstall-cancel">Cancel</button>
+    </div>
+  </div>
+</div>
 <div id="prompt" class="prompt hidden" role="status" aria-live="polite"></div>
 <div id="gaze" class="gaze hidden"><div class="gaze-dot" id="gaze-dot"></div><div class="gaze-text" id="gaze-text"></div></div>
 <div id="toasts" aria-live="polite"></div>

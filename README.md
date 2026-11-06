@@ -19,6 +19,22 @@ download it and double-click. The first start unpacks it once (about half a minu
 offers updates by itself. Windows may warn about an unknown publisher (the app isn't code-signed): *More info* →
 *Run anyway*. Optional extra: the WiLoR finger helper needs its own setup (see [WiLoR fingers](#wilor-fingers-3d-hand-model-gpu)).
 
+## Uninstalling
+In the app: **Settings → Uninstall Avatar Studio…** (classic launcher: *Check → Uninstall...*; or
+`AvatarStudio.exe uninstall` in a console). Avatar Studio closes, and a few seconds later everything it put on your PC
+is gone. Your data (calibration, recordings, training) is kept unless you tick *Also delete my data*; then it goes to
+the Recycle Bin, so you can still restore it.
+
+What it removes, if you'd rather do it by hand (it has no installer and changes nothing in the registry):
+
+| Where | What |
+|---|---|
+| your `AvatarStudio.exe` | the app |
+| `%LOCALAPPDATA%\AvatarStudio` | the unpacked app (about 800 MB per version) and window caches |
+| `%APPDATA%\AvatarStudio` | your data: calibration, settings, recordings, face / gesture training, profiles |
+| Start menu and desktop | `Avatar Studio.lnk`, if you made the shortcuts |
+| `%TEMP%\AvatarStudio-wilor` | the WiLoR helper's scripts, if you used WiLoR (its own `.venv_wilor` you set up yourself) |
+
 ## Quick start
 Double-click **`AvatarStudio.exe`** (or, after building it yourself, `Distributions\AvatarStudio.exe`) - the whole app is that one file: one window with your camera,
 your 3D avatar, the settings and every tool (calibration, avatar test, latency test, face training, gestures,
