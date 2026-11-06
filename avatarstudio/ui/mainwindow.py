@@ -137,7 +137,8 @@ class AppApi:
 
     def set_prefs(self, values):
         self._prefs.update({k: v for k, v in values.items() if k in (
-            "camera", "mic", "fps", "camera2", "camera3", "autostart", "tray", "layout", "check_updates")})
+            "camera", "mic", "fps", "camera2", "camera3", "autostart", "tray", "layout", "check_updates",
+            "guide_done")})
         self._save_prefs()
         return self._prefs
 
@@ -414,6 +415,19 @@ class AppApi:
             return
         time.sleep(1.0)  # (the page shows "Restarting..." for a moment)
         self._window.destroy()  # (main() then ends this process; the new version is starting)
+
+    def bug_report(self, description=""):
+        """The report to read first (core/bugreport.py); nothing is sent."""
+        from avatarstudio.core import bugreport
+        return bugreport.build(description)
+
+    def open_url(self, url):
+        """Only the app's own GitHub pages (the report's new-issue link)."""
+        import webbrowser
+        if not (GITHUB_REPO and str(url).startswith(f"https://github.com/{GITHUB_REPO}/")):
+            return {"ok": False, "error": "Not an Avatar Studio link"}
+        webbrowser.open(url)
+        return {"ok": True}
 
     def check_connections(self):
         """Which VTuber app (if any) is there to receive the avatar (engine/connections.py)."""

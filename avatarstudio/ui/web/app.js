@@ -148,6 +148,7 @@ function applyState(s) {
     app.filled = true;
     setLayout(app.prefs.layout || 'split', false);
     if (app.prefs.autostart && !engineRunning() && !app.autostarted) { app.autostarted = true; start('live'); }
+    if (!app.prefs.guide_done) maybeShowGuide();
   }
   fillDevices();
   const e = s.engine;
@@ -493,6 +494,10 @@ function buildSettings() {
     <div class="row"><select class="plain" id="profile-list" style="flex:1"></select><button class="btn" id="btn-profile-load">Load</button></div>
     <div class="actions"><button class="btn danger" id="btn-reset">Reset all settings</button></div>
   </div>
+  <div class="card"><h2>Report a problem</h2><p class="muted small" style="margin:4px 0 8px">Puts together a bug report (what happened, version, system, settings, recent log lines, with personal details taken out). You read it first; nothing is sent until you submit it on GitHub yourself.</p>
+    <textarea id="report-desc" rows="3" placeholder="What happened? What did you expect?" style="width:100%"></textarea>
+    <div class="actions"><button class="btn" id="btn-report">Prepare report…</button></div>
+  </div>
   <div class="card"><h2>Uninstall</h2><p class="muted small" style="margin:4px 0 8px">Removes Avatar Studio from this PC: the app, its unpacked files and caches, and its shortcuts. Your data (calibration, recordings, training) is kept unless you choose otherwise.</p>
     <div class="actions"><button class="btn danger" id="btn-uninstall">Uninstall Avatar Studio…</button></div>
   </div>`;
@@ -530,7 +535,100 @@ function buildSettings() {
     setTimeout(loadSettings, 500);
   };
   $('#btn-uninstall').onclick = openUninstall;
+  $('#btn-report').onclick = () => openReport($('#report-desc').value);
 }
+
+// ---------------------------------------------------------------- report a problem (core/bugreport.py)
+async function openReport(description = '') {
+  const r = await call('bug_report', description);
+  app.report = r;
+  $('#report-text').value = r.text;
+  $('#report-note').textContent = !r.url ? 'This build has no GitHub repository set: copy the report and send it however you like.'
+    : r.short ? 'The full report is too long for a link: GitHub opens with fewer log lines. Copy the full text and paste it there if you like.'
+      : 'GitHub opens in your browser with this filled in. Check it, then press Submit there (a free GitHub account is needed).';
+  $('#btn-report-open').disabled = !r.url;
+  $('#report-dialog').classList.remove('hidden');
+}
+$('#btn-report-open').onclick = async () => { const r = await call('open_url', app.report.url); if (!r.ok) toast(r.error, 'bad'); };
+$('#btn-report-copy').onclick = () => { $('#report-text').select(); document.execCommand('copy'); toast('Report copied', 'ok'); };
+$('#btn-report-close').onclick = () => $('#report-dialog').classList.add('hidden');
+
+// ---------------------------------------------------------------- first-run guide (once; Getting started reopens it)
+const GUIDE = [
+  ['Welcome to Avatar Studio', () => `
+    <p>Your webcam moves a VTuber avatar: face, expressions, body and every finger. Everything runs on this PC; nothing
+    is uploaded.</p><p class="muted">Four short steps get you moving. You can skip and come back from <b>Getting started</b>.</p>`],
+  ['Your camera', () => `
+    <div class="row"><div class="label">Camera</div><div class="ctl"><select class="plain" id="guide-camera"></select></div></div>
+    <ul class="muted small guide-tips">
+      <li>Light your face from the front (a window or lamp behind the screen, not behind you).</li>
+      <li>Camera at about eye level, an arm's length away.</li>
+      <li>Head, shoulders and both hands in the picture, for finger tracking.</li>
+    </ul>`],
+  ['Start tracking and set your neutral pose', () => `
+    <p>Start tracking, then sit as you usually do, relax your face, look at the screen and press <b>Neutral pose</b>.
+    Hold still for a second.</p>
+    <div class="actions"><button class="btn primary" id="guide-start"><svg class="i"><use href="#i-play"/></svg>Start tracking</button>
+      <button class="btn" id="guide-neutral"><svg class="i"><use href="#i-target"/></svg>Neutral pose (C)</button></div>
+    <p class="muted small" id="guide-track-state"></p>`],
+  ['Connect your VTuber app', () => `
+    <p>In VSeeFace, VNyan, Warudo or VMagicMirror turn on <b>VMC receiving on port 39539</b>. For a Live2D model, open
+    VTube Studio and allow the plugin when it asks.</p>
+    <div class="conn" id="guide-conn"></div>
+    <div class="actions"><button class="btn" id="guide-conn-check"><svg class="i"><use href="#i-cast"/></svg>Check again</button></div>
+    <p class="muted small">No VTuber app? The built-in 3D viewer shows your avatar (drop your .vrm on it); in OBS add a browser source with http://127.0.0.1:8000.</p>`],
+  ['You\'re set', () => `
+    <p>Your avatar follows you now. For an even closer match, <b>Getting started</b> has a few more one-time steps:
+    your vowels and voice for lip sync, open hands and fists, eye gaze, and a 2-minute face training.</p>
+    <p class="muted small">Something not working? Settings › <b>Report a problem</b> prepares a bug report for you to check and send.</p>`],
+];
+let guideStep = 0;
+async function maybeShowGuide() {
+  const r = await call('checklist');
+  if (r.steps[1] && r.steps[1].done) { setPref({ guide_done: true }); return; }  // (already calibrated: not new)
+  openGuide();
+}
+function openGuide() { guideStep = 0; renderGuide(); $('#guide').classList.remove('hidden'); }
+function closeGuide(page) {
+  $('#guide').classList.add('hidden');
+  setPref({ guide_done: true });
+  if (page) showPage(page);
+}
+function renderGuide() {
+  const [title, body] = GUIDE[guideStep];
+  $('#guide-title').textContent = title;
+  $('#guide-body').innerHTML = body();
+  $('#guide-dots').innerHTML = GUIDE.map((_, i) => `<span class="${i === guideStep ? 'on' : i < guideStep ? 'done' : ''}"></span>`).join('');
+  $('#btn-guide-back').classList.toggle('hidden', guideStep === 0);
+  $('#btn-guide-next').textContent = guideStep === GUIDE.length - 1 ? 'Finish' : guideStep === 0 ? 'Let\'s go' : 'Next';
+  $('#btn-guide-skip').classList.toggle('hidden', guideStep === GUIDE.length - 1);
+  if ($('#guide-camera')) {
+    const src = $('#sel-camera');
+    $('#guide-camera').innerHTML = src.innerHTML; $('#guide-camera').value = src.value;
+    $('#guide-camera').onchange = (e) => { src.value = e.target.value; setPref({ camera: e.target.value }); };
+  }
+  if ($('#guide-start')) {
+    const state = () => {
+      const on = engineRunning();
+      $('#guide-start').disabled = on; $('#guide-neutral').disabled = !on;
+      $('#guide-track-state').textContent = on ? 'Tracking is on: the Live page shows your camera.' : '';
+    };
+    $('#guide-start').onclick = async () => { await start('live'); $('#guide').classList.remove('hidden'); state(); };
+    $('#guide-neutral').onclick = () => { sendKey('c'); toast('Hold still: setting your neutral pose', 'ok'); };
+    state(); app.guideTick = setInterval(() => ($('#guide-start') ? state() : clearInterval(app.guideTick)), 700);
+  }
+  if ($('#guide-conn')) {
+    checkConnections('#guide-conn');
+    $('#guide-conn-check').onclick = () => checkConnections('#guide-conn');
+  }
+}
+$('#btn-guide-next').onclick = () => {
+  if (guideStep === GUIDE.length - 1) { closeGuide('start'); return; }
+  guideStep++; renderGuide();
+};
+$('#btn-guide-back').onclick = () => { guideStep = Math.max(0, guideStep - 1); renderGuide(); };
+$('#btn-guide-skip').onclick = () => closeGuide();
+$('#btn-guide').onclick = openGuide;
 
 // ---------------------------------------------------------------- is a VTuber app listening? (engine/connections.py)
 const CONN_HELP = {

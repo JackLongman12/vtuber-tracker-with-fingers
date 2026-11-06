@@ -224,3 +224,12 @@ input[type=range] { width: 150px; accent-color: var(--accent); }
 .conn-row .i { flex: none; margin-top: 2px; }
 .conn-row.ok { color: var(--text); }
 .conn-row.ok .i { color: var(--ok); }
+
+/* first-run guide */
+.guide-card { width: min(560px, 92vw); }
+.guide-dots { display: flex; gap: 6px; margin-bottom: 12px; }
+.guide-dots span { width: 22px; height: 4px; border-radius: 2px; background: var(--line-2); }
+.guide-dots span.done { background: var(--accent-soft); }
+.guide-dots span.on { background: var(--accent); }
+.guide-tips { margin: 10px 0 0; padding-left: 18px; line-height: 1.6; }
+#guide-body p { line-height: 1.5; }

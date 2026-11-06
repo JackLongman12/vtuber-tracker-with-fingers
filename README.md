@@ -19,6 +19,20 @@ download it and double-click. The first start unpacks it once (about half a minu
 offers updates by itself. Windows may warn about an unknown publisher (the app isn't code-signed): *More info* →
 *Run anyway*. Optional extra: the WiLoR finger helper needs its own setup (see [WiLoR fingers](#wilor-fingers-3d-hand-model-gpu)).
 
+## Experimental: v1.1 (branch `v1.1-experimental`)
+Trial versions are published as **pre-releases** on the Releases page: the app never updates to one by itself, and
+the Download link above stays on the newest full release. New in v1.1:
+- **Setup guide** on first start: camera, lighting tips, tracking and neutral pose, connecting your VTuber app.
+  Getting started → *Show the setup guide* opens it again.
+- **Connection check** (Check setup page, and in the guide): shows which app is listening for the avatar on port
+  39539 (VSeeFace, VNyan, Warudo, ...) and whether VTube Studio's plugin API is on, or how to turn them on.
+- **Report a problem** (Settings): puts together a bug report (version, system, settings, recent log lines, with
+  your user name, PC name, folder paths, email and network addresses taken out). You read all of it first; GitHub
+  opens with it filled in, and nothing is sent until you press Submit there.
+- **Phantom hands dropped:** turned away from the camera, the hand model could "find" a hand in your hair. The avatar
+  froze its head as if a hand covered your face and reached its arm up there. A hand further than 3.5 body sizes
+  from both of the body model's wrists is now ignored (real hands on the test takes: at most 2.7).
+
 ## Uninstalling
 In the app: **Settings → Uninstall Avatar Studio…** (classic launcher: *Check → Uninstall...*; or
 `AvatarStudio.exe uninstall` in a console). Avatar Studio closes, and a few seconds later everything it put on your PC

@@ -4,6 +4,8 @@ their next start (avatarstudio/core/updater.py).
   .venv\\Scripts\\python.exe tools/release.py 1.2.0 --notes "What's new (shown in the app's update dialog)"
   .venv\\Scripts\\python.exe tools/release.py 1.2.0 --notes-file notes.md --dry-run   (build only, upload nothing)
   .venv\\Scripts\\python.exe tools/release.py --models    (models/ as models.zip on the "models" release: fetch_models.py)
+  .venv\\Scripts\\python.exe tools/release.py 1.1.0 --prerelease --branch v1.1-experimental --notes "..."
+      (experimental: a pre-release built from a branch; apps never update to it by themselves)
 
 Before the first release: set GITHUB_REPO ("owner/repository") in avatarstudio/version.py, push your code (the tag
 goes on the default branch's newest commit), and have a token: GITHUB_TOKEN=... (a fine-grained token with
@@ -108,12 +110,18 @@ def release_app(args, repo, token):
     if args.dry_run:
         print("dry run: nothing uploaded")
         return
-    rel = call("POST", f"{args.api}/repos/{repo}/releases", token, {
-        "tag_name": f"v{version}", "name": f"Avatar Studio {version}", "body": notes, "draft": False,
-        "prerelease": False})
+    body = {"tag_name": f"v{version}", "name": f"Avatar Studio {version}" + (" (experimental)" if args.prerelease else ""),
+            "body": notes, "draft": False, "prerelease": bool(args.prerelease)}
+    if args.prerelease:
+        body["make_latest"] = "false"
+        if args.branch:  # (tagged on that branch's newest commit, not the default branch's)
+            body["target_commitish"] = args.branch
+    rel = call("POST", f"{args.api}/repos/{repo}/releases", token, body)
     upload(rel, app, "AvatarStudio.exe", token)
     upload(rel, sums, "SHA256SUMS.txt", token)
-    print(f"released: {rel.get('html_url')}\nInstalled apps offer it on their next start.")
+    print(f"released: {rel.get('html_url')}\n" + ("A pre-release: installed apps don't offer it (they only take the "
+                                                    "latest full release); people download it themselves."
+                                                    if args.prerelease else "Installed apps offer it on their next start."))
     if not args.skip_build:
         print(f"Commit and push avatarstudio/version.py (now {version}).")
 
@@ -151,6 +159,9 @@ def main():
     ap.add_argument("--dry-run", action="store_true", help="build and write the checksum, upload nothing")
     ap.add_argument("--skip-build", action="store_true", help="publish the existing Distributions/AvatarStudio.exe")
     ap.add_argument("--models", action="store_true", help="upload models/ as models.zip (for tools/fetch_models.py)")
+    ap.add_argument("--prerelease", action="store_true",
+                    help="an experimental release: not offered as an update, and not the download link's 'latest'")
+    ap.add_argument("--branch", help="with --prerelease: tag this branch's newest commit (e.g. v1.1-experimental)")
     ap.add_argument("--exe", help=argparse.SUPPRESS)  # (checks: another file)
     ap.add_argument("--api", default=API, help=argparse.SUPPRESS)  # (checks: a stand-in GitHub)
     ap.add_argument("--repo", default=None, help=argparse.SUPPRESS)

@@ -210,7 +210,8 @@
         <div style="display:flex;flex-direction:column;gap:14px">
           <div class="card"><h2>Extras</h2><div id="info"></div></div>
           <div class="note"><svg class="i"><use href="#i-info"/></svg><span>Keys work while this window is in front: C neutral pose, V vowels, K hands, G eye gaze, P pause, 1–9 expressions. From any window: Ctrl+Alt+C, Ctrl+Alt+P, Ctrl+Alt+1–9.</span></div>
-          <div class="actions" style="margin:0"><button class="btn" id="btn-data"><svg class="i"><use href="#i-folder"/></svg>Open your data folder</button></div>
+          <div class="actions" style="margin:0"><button class="btn" id="btn-data"><svg class="i"><use href="#i-folder"/></svg>Open your data folder</button>
+            <button class="btn" id="btn-guide"><svg class="i"><use href="#i-flag"/></svg>Show the setup guide</button></div>
         </div>
       </div>
     </section>
@@ -227,6 +228,32 @@
     <div class="actions">
       <button class="btn primary" id="btn-update-now"><svg class="i"><use href="#i-upload"/></svg>Update and restart</button>
       <button class="btn ghost" id="btn-update-later">Later</button>
+    </div>
+  </div>
+</div>
+<div id="guide" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="guide-title">
+  <div class="modal-card guide-card">
+    <div class="guide-dots" id="guide-dots"></div>
+    <h2 id="guide-title"></h2>
+    <div id="guide-body"></div>
+    <div class="actions">
+      <button class="btn ghost" id="btn-guide-skip">Skip the guide</button>
+      <span style="flex:1"></span>
+      <button class="btn" id="btn-guide-back">Back</button>
+      <button class="btn primary" id="btn-guide-next">Next</button>
+    </div>
+  </div>
+</div>
+<div id="report-dialog" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="report-title">
+  <div class="modal-card" style="width:min(720px, 94vw)">
+    <h2 id="report-title">Your bug report</h2>
+    <p class="muted small">This is everything that would be sent. Personal details (your user name, the PC's name, folder paths, email and network addresses) were taken out; edit anything else on GitHub before you submit.</p>
+    <textarea id="report-text" readonly rows="16" style="width:100%;font-family:ui-monospace,Consolas,monospace;font-size:12px"></textarea>
+    <p class="muted small" id="report-note"></p>
+    <div class="actions">
+      <button class="btn primary" id="btn-report-open"><svg class="i"><use href="#i-upload"/></svg>Open GitHub to send it</button>
+      <button class="btn" id="btn-report-copy">Copy</button>
+      <button class="btn ghost" id="btn-report-close">Close</button>
     </div>
   </div>
 </div>
