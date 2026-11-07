@@ -173,7 +173,11 @@
   </div>
 </main>
 <script>
-const url = new URLSearchParams(location.search).get('ws') || `ws://${location.hostname || '127.0.0.1'}:8765`;
+// ?ws= picks another port (--ws-port); only this PC's addresses, so a link can't point the page at someone's server
+const LOCAL_WS = /^ws:\/\/(127\.0\.0\.1|localhost|\[::1\])(:\d{1,5})?\/?$/i;
+const wsParam = new URLSearchParams(location.search).get('ws');
+const url = wsParam && LOCAL_WS.test(wsParam) ? wsParam
+  : `ws://${/^(localhost|\[::1\])$/i.test(location.hostname) ? location.hostname : '127.0.0.1'}:8765`;
 let ws, editing = 0;
 const send = (m) => ws && ws.readyState === 1 && ws.send(JSON.stringify(m));
 const fmt = (k, v) => k === 'max_fps' ? (+v ? `${v}` : 'off') : k.startsWith('predict') ? `${v}` : (+v).toFixed(2);

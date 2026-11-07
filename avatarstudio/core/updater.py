@@ -63,6 +63,9 @@ def download(info, folder, progress=None):
     checked against SHA256SUMS.txt. progress(done_bytes, total_bytes). -> its path."""
     if not info.get("sums_url"):
         raise ValueError("the release has no SHA256SUMS.txt, so the download can't be checked")
+    home = f"https://github.com/{GITHUB_REPO}/releases/download/"
+    if not all(str(info.get(k, "")).startswith(home) for k in ("url", "sums_url")):
+        raise ValueError("the update isn't on Avatar Studio's own GitHub releases; nothing was downloaded")
     with _open(info["sums_url"]) as r:
         sums = r.read().decode("utf-8", "replace")
     expected = next((line.split()[0].lower() for line in sums.splitlines()

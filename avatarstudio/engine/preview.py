@@ -28,7 +28,6 @@ class PreviewHub:
         viewer goes away."""
         handler.send_response(200)
         handler.send_header("Content-Type", "multipart/x-mixed-replace; boundary=frame")
-        handler.send_header("Access-Control-Allow-Origin", "*")
         handler.end_headers()
         with self.cond:
             self.viewers += 1

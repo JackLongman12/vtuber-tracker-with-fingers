@@ -53,7 +53,9 @@ def onnx_session(path, so=None):
 
 
 def open_folder(path):
-    """Show a folder in Explorer / Finder / the file manager."""
+    """Show a folder in Explorer / Finder / the file manager (folders only: os.startfile would run a program)."""
+    if not os.path.isdir(path):
+        raise NotADirectoryError(path)
     if WINDOWS:
         os.startfile(path)
     else:

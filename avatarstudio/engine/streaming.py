@@ -103,8 +103,16 @@ class WebSocketStream:
             finally:
                 self.clients.discard(ws)
 
+        def check(connection, request):
+            """Only Avatar Studio's own pages and local programs (core/localweb.py): any website open in a browser
+            could otherwise read the tracking data and send settings."""
+            from avatarstudio.core.localweb import allowed
+            if not allowed(request.headers):
+                return connection.respond(403, "Only Avatar Studio's own pages can use this address\n")
+            return None
+
         async def main():
-            async with serve(handler, self.host, self.port):
+            async with serve(handler, self.host, self.port, process_request=check, max_size=1 << 20):
                 self.ready.set()
                 await asyncio.Future()
 

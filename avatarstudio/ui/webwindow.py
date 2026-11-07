@@ -261,20 +261,41 @@ def serve(directory, port=0, routes=None):
     routes: {path: function(handler)} answered by those functions instead (the studio's camera.mjpg)."""
     import functools
     from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+    from avatarstudio.core.localweb import SECURITY_HEADERS, allowed
 
     class Handler(SimpleHTTPRequestHandler):
         # Python's guess comes from the Windows registry, where some programs set .js to text/plain; browsers
         # refuse to run modules served like that
         extensions_map = {**SimpleHTTPRequestHandler.extensions_map, ".js": "text/javascript"}
 
+        def _refuse(self):
+            """Requests from other websites (core/localweb.py) get nothing."""
+            if allowed(self.headers):
+                return False
+            self.send_error(403, "Only Avatar Studio's own pages can use this address")
+            return True
+
         def do_GET(self):
+            if self._refuse():
+                return None
             route = (routes or {}).get(self.path.split("?")[0])
             if route:
                 return route(self)
             return super().do_GET()
 
+        def do_HEAD(self):
+            if self._refuse():
+                return None
+            return super().do_HEAD()
+
+        def list_directory(self, path):  # (no folder listings)
+            self.send_error(404)
+            return None
+
         def end_headers(self):
             self.send_header("Cache-Control", "no-cache")
+            for k, v in SECURITY_HEADERS.items():
+                self.send_header(k, v)
             super().end_headers()
 
         def log_message(self, *a):

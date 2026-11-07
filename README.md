@@ -646,8 +646,9 @@ tracking starts and connects once the studio runs. Size, position and maximized 
 (`windows.json` in your data folder; the first time it opens centred on the screen with the mouse). Opening one
 that is already open brings it to the front. Its *Settings* / *open 3D viewer* links open the other window.
 - **No internet needed:** three.js 0.160.0 and three-vrm 3.4.0 are bundled in `avatarstudio/ui/web/lib/` (MIT licences next to
-  them), for the windows, browsers and OBS alike. Only `avatarstudio/ui/web/index.html` opened straight from the folder
-  (`file://`) still loads them from unpkg. Checked with the window's internet blocked: the viewer loaded,
+  them), for the windows, browsers and OBS alike. `avatarstudio/ui/web/index.html` opened straight from the folder
+  (`file://`) loads them from unpkg, and can't connect to the studio (only pages served on this PC's address can,
+  see *Only your own pages can use the studio*). Checked with the window's internet blocked: the viewer loaded,
   connected, took a dropped VRM and moved it.
 - **Browsers and OBS:** http://127.0.0.1:8000 and http://127.0.0.1:8000/settings.html work as before while the
   studio runs.
@@ -657,6 +658,17 @@ that is already open brings it to the front. Its *Settings* / *open 3D viewer* l
   loaded and connected to the studio at 1.2–1.35 s. Most of that is loading .NET and WebView2. WebView2 keeps its
   cache in `%LOCALAPPDATA%\AvatarStudio\WebView2`. The one-file app grew by 1.7 MB (pywebview, pythonnet, the
   bundled JS).
+
+## Only your own pages can use the studio
+The studio's addresses (pages on http://127.0.0.1:8000, the camera picture, the WebSocket on :8765) listen on this
+PC only, but a browser lets any website reach 127.0.0.1. So they now answer only Avatar Studio's own pages
+(`avatarstudio/core/localweb.py`): a browser request has to come from a page on 127.0.0.1, localhost or [::1], the
+address it asks for has to be local (no DNS-rebinding tricks), and other sites can't frame the pages or load the
+camera picture. Programs that aren't browsers (the app itself, your own scripts) connect as before. Checked: from
+https://example.com the WebSocket is refused and the camera picture doesn't load; the viewer at
+http://127.0.0.1:8000 and http://localhost:8000 still connect and show it. Also: the viewer's and settings page's
+`?ws=` can only name a local address, *Open data folder* only opens folders inside your data folder, and updates
+download only from this project's own GitHub releases.
 
 ## VTube Studio (Live2D)
 1. In VTube Studio: Settings → turn on **Start API** (port 8001), and turn **off** its own webcam tracking.

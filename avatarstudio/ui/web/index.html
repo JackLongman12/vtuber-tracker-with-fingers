@@ -350,7 +350,10 @@ function onFrame(d) {
   document.getElementById('dist').textContent = d.distance_cm ? `${Math.round(d.distance_cm)} cm` : '–';
 }
 
-const url = new URLSearchParams(location.search).get('ws') || 'ws://127.0.0.1:8765';
+// ?ws= picks another port (--ws-port); only this PC's addresses, so a link can't point the page at someone's server
+const LOCAL_WS = /^ws:\/\/(127\.0\.0\.1|localhost|\[::1\])(:\d{1,5})?\/?$/i;
+const wsParam = new URLSearchParams(location.search).get('ws');
+const url = wsParam && LOCAL_WS.test(wsParam) ? wsParam : 'ws://127.0.0.1:8765';
 const statusEl = document.getElementById('status');
 let retry = 500, retryTimer = null;  // waits longer between tries (up to 5 s) while the studio is off
 function connect() {

@@ -321,7 +321,11 @@ class AppApi:
 
     def open_data_folder(self, sub=""):
         from avatarstudio.core.os_support import open_folder
-        path = user_file(sub) if sub else os.path.dirname(user_file("x"))
+        base = os.path.dirname(user_file("x"))
+        path = os.path.realpath(os.path.join(base, str(sub))) if sub else base
+        # (a folder inside the data folder only: os.startfile would also run a program it's given)
+        if os.path.commonpath([path, os.path.realpath(base)]) != os.path.realpath(base) or os.path.isfile(path):
+            return {"ok": False, "error": "Not a data folder"}
         os.makedirs(path, exist_ok=True)
         open_folder(path)
         return {"ok": True}
