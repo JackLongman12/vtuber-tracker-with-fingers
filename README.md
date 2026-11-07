@@ -601,6 +601,10 @@ eyes were already as good, so they keep the defaults.
 - When your face, torso or an arm drops out, its last pose is held for 0.3 s, then eased into a rest pose over
   1 s (no snapping). Face shapes fade to neutral; VTuber apps otherwise keep the last value, e.g. an open mouth.
 - **Idle:** gentle breathing always; while your face is lost, automatic blinks and a slow head drift.
+- **Camera covered** (a lens cover, a hand over it: the picture is black, with not even a lamp or screen showing):
+  after 0.4 s the picture isn't tracked at all, the avatar eases to rest and its idle motion fades out over a
+  second, so it stands still. The status bar shows *camera covered*; the microphone still moves the mouth. A dim
+  room isn't mistaken for it (tested: a photo at a quarter of its brightness). Tracking resumes on the first lit frame.
 - **Prediction** (default 0 ms; settings page) extrapolates movement to hide camera and processing delay. In a test
   with fast 1 Hz motion, 20 ms removed a 33 ms lag at the cost of an 8.5% overshoot, but it also makes noise
   visible as jitter, so it's off by default.

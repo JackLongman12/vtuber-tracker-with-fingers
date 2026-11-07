@@ -415,7 +415,7 @@ function renderStatusbar() {
   const st = app.status;
   const set = (id, text) => { $(id).textContent = text; };
   const known = (k) => st && st[k] !== undefined;  // (the tools report only some of these)
-  set('#st-face', known('face') ? (st.face ? 'tracked' : 'not visible') : '–');
+  set('#st-face', known('face') ? (st.covered ? 'camera covered' : st.face ? 'tracked' : 'not visible') : '–');
   $('#st-face-dot').className = `dot ${known('face') ? (st.face ? 'ok' : 'warn') : ''}`;
   set('#st-hands', known('hands') ? String(st.hands) : '–');
   set('#st-cal', known('calibrated') ? (st.calibrated ? (st.vowels ? 'neutral + vowels' : 'neutral only') : 'not calibrated') : '–');

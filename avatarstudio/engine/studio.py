@@ -86,6 +86,29 @@ def draw_face_monitor(view, frame, res, avatar):
 
 
 EMPTY_RESULT = {"faces": [], "hands": [], "body": None, "head": None, "depth": None}
+
+
+class CoverDetector:
+    """Is the camera covered (a lens cover, a hand over it, a dead-black picture)? The trackers then "find" faces
+    and hands in the picture's noise and the avatar twitched about. Black = almost no light anywhere: mean
+    brightness under DARK and even its brightest spots under PEAK (a dim room still has a lamp, a screen, a window).
+    Covered after HOLD_S of black (a quick pass of a hand doesn't count); uncovered at the first clearly lit frame."""
+    DARK, PEAK, LIT, HOLD_S = 12.0, 35.0, 18.0, 0.4
+
+    def __init__(self):
+        self.covered, self.since, self._dark_from = False, None, None
+
+    def update(self, frame, t):
+        small = cv2.resize(frame, (64, 36), interpolation=cv2.INTER_AREA)
+        gray = small.mean(axis=2) if small.ndim == 3 else small
+        mean, peak = float(gray.mean()), float(np.percentile(gray, 98))
+        if mean < self.DARK and peak < self.PEAK:
+            self._dark_from = t if self._dark_from is None else self._dark_from
+            if not self.covered and t - self._dark_from >= self.HOLD_S:
+                self.covered, self.since = True, t
+        elif mean > self.LIT or peak >= self.PEAK:
+            self.covered, self.since, self._dark_from = False, None, None
+        return self.covered
 GAZE_TARGETS = [(0, 0), (-1, -1), (1, -1), (-1, 1), (1, 1), (0, 0)]  # screen units: -1 = left / top
 GAZE_SETTLE_S, GAZE_HOLD_S = 1.0, 1.2
 GAZE_WINDOW = "Gaze calibration"
@@ -571,6 +594,7 @@ def main():
     writer, log, motion = None, open(args.log, "w") if args.log else None, []
     extra_rec = None  # (--record with extra cameras: their videos, in step with the main one)
     no_camera, cam_lost_warned, pipeline_ms, last_stats = False, False, [], time.time()
+    cover, covered = CoverDetector(), False
     clap = ClapLatency() if args.latency_test else None
     window = None if args.headless else StreamView(settings, preview) if preview else StudioWindow(settings)
     if clap is not None and not settings.mic_lipsync:
@@ -747,9 +771,17 @@ def main():
                     writer.write(frame)
                     rec_n += 1
 
+            was_covered = cover.covered
+            covered = not no_camera and cover.update(frame, t)  # lens cover / pitch black: nothing to track
+            if covered != was_covered:
+                print("camera covered (picture is black): the avatar rests until it can see you again" if covered
+                      else "camera uncovered: tracking again", flush=True)
+            rig.covered_since = cover.since if covered and not multicam else None
             extra_jobs = multicam.submit(t * 1000) if multicam and not paused else None  # alongside the main one
-            res = EMPTY_RESULT if no_camera or paused else guarded("tracking", tracker, frame, timestamp_ms=t * 1000,
-                                                                   default=EMPTY_RESULT)
+            # (a black picture isn't tracked at all: the models "found" faces and hands in its noise, which moved
+            # the avatar)
+            res = EMPTY_RESULT if no_camera or covered or paused else guarded(
+                "tracking", tracker, frame, timestamp_ms=t * 1000, default=EMPTY_RESULT)
             extra_res = multicam.collect(extra_jobs) if extra_jobs else None
             if extra_rec is not None and rec_add:  # (after collect: each extra camera's frame of this loop)
                 guarded("extra camera recording", extra_rec.write, multicam.extras, rec_add)
@@ -760,7 +792,7 @@ def main():
             t_c = time.perf_counter()
             timing["tracking"] += t_c - t_b
             f = focal_px(frame.shape[1], args.fov)
-            if wilor is not None and not no_camera and not paused:  # finger shapes from WiLoR (newest result)
+            if wilor is not None and not no_camera and not covered and not paused:  # finger shapes from WiLoR (newest result)
                 guarded("WiLoR", wilor.submit, frame, [h for h in res["hands"] if "_cam" not in h])
                 guarded("WiLoR", wilor.apply, res)
             labels, gesture_shapes = guarded("gestures", gestures, res["hands"], default=({}, {}))
@@ -858,7 +890,7 @@ def main():
             mic_state = mic.read() if mic else None
             main_face = max(res["faces"], key=lambda fc: fc["box"][2]) if res["faces"] else None
             mouth_shapes = guarded("mouth model", mouth_net, frame, main_face) \
-                if mouth_net and main_face and not no_camera else None
+                if mouth_net and main_face and not no_camera and not covered else None
             avatar = None if paused else guarded("rig", rig, res, f, t, gesture_shapes, mic=mic_state,
                                                  extra_shapes={n: 1.0 for n in active_expr}, arkit_extra=mouth_shapes)
             avatar = last_avatar = avatar or last_avatar  # (paused or a failed frame: the last pose again)
@@ -893,7 +925,7 @@ def main():
                         "settings": settings.as_dict(), "fps": fps,
                         "cameras": [{"name": e.name, "aligned": e.R is not None, "seen": e.res is not None}
                                     for e in multicam.extras] if multicam else [],
-                        "face": bool(res["faces"]), "hands": len(res["hands"]),
+                        "face": bool(res["faces"]), "hands": len(res["hands"]), "covered": covered,
                         "calibrated": bool(rig.calib), "vowels": bool(rig.calib and "vowels" in rig.calib),
                         "face_refiner": rig.face_refiner is not None, "wholebody": tracker.wb is not None,
                         "mouth_shapes": mouth_net.enabled if mouth_net else [],

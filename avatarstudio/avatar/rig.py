@@ -683,6 +683,15 @@ class AvatarRig:
         self.predict_body_s = 0.0      # look-ahead for torso, head and arms only (fingers and face stay as tracked)
         self._head_offset = None        # body-model head frame -> face frame, as of the last face frame (_head)
         self._head_src, self._head_switch, self._head_last = None, None, None
+        self.covered_since = None  # camera covered / pitch black (studio): idle motion fades out, the avatar rests
+
+    def _idle_amount(self, t):
+        """How much idle motion to show: 1, fading to 0 over a second once the camera is covered."""
+        if not self.idle:
+            return 0.0
+        if self.covered_since is None:
+            return 1.0
+        return 1.0 - float(np.clip(t - self.covered_since, 0.0, 1.0))
 
     def set_proportions(self, offsets):
         """The avatar's own rest skeleton: {bone: offset from its parent in metres, rig axes}. Bones the avatar
@@ -1186,12 +1195,13 @@ class AvatarRig:
                                OCCLUDED_HOLD_S if behind[S] else LOSS_HOLD_S)
 
         # idle motion so the avatar never freezes: breathing, plus a slow head drift while the face is lost
-        if self.idle:
-            breath = math.sin(2 * math.pi * 0.22 * t)
+        idle = self._idle_amount(t)  # (camera covered: none, so the avatar stays still)
+        if idle > 0:
+            breath = math.sin(2 * math.pi * 0.22 * t) * idle
             local["Spine"] = q_mul(local["Spine"], q_from_mat(rot_x(math.radians(1.2 * breath))))
             if head_fade > 0:
-                sway = rot_y(math.radians(3 * math.sin(0.31 * t) * head_fade)) @ \
-                    rot_x(math.radians(1.5 * math.sin(0.23 * t + 1) * head_fade))
+                sway = rot_y(math.radians(3 * math.sin(0.31 * t) * head_fade * idle)) @ \
+                    rot_x(math.radians(1.5 * math.sin(0.23 * t + 1) * head_fade * idle))
                 local["Head"] = q_mul(local["Head"], q_from_mat(sway))
 
         if self.no_clip:  # hands / arms never pass through the torso or head
@@ -1280,8 +1290,8 @@ class AvatarRig:
             arkit = {k: v * keep for k, v in last_arkit.items()}
             vrm = {k: v * keep for k, v in last_vrm.items()}
             vrm.update({v: max(vrm.get(v, 0.0) * keep, visemes.get(v, 0.0)) for v in VOWELS})
-            if self.idle:
-                blink = self._auto_blink(t) * (1 - keep)
+            if self._idle_amount(t) > 0:
+                blink = self._auto_blink(t) * (1 - keep) * self._idle_amount(t)
                 for k in ("Blink", "Blink_L", "Blink_R"):
                     vrm[k] = max(vrm.get(k, 0.0), blink)
                 for k in ("eyeBlinkLeft", "eyeBlinkRight"):
