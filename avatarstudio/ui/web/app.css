@@ -82,7 +82,7 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
 .select select option { background: var(--raised); color: var(--text); }
 select.plain { background: var(--raised); border: 1px solid var(--line-2); color: var(--text); border-radius: var(--radius-sm);
   height: 34px; padding: 0 8px; font: 13.5px var(--font); min-width: 160px; }
-input[type=text] { background: var(--raised); border: 1px solid var(--line-2); color: var(--text); border-radius: var(--radius-sm);
+input[type=text], input[type=number] { background: var(--raised); border: 1px solid var(--line-2); color: var(--text); border-radius: var(--radius-sm);
   height: 34px; padding: 0 10px; font: 13.5px var(--font); }
 .seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: 10px; background: var(--panel-2); border: 1px solid var(--line); }
 .seg button { border: 0; background: transparent; color: var(--text-2); font: 500 13px var(--font); height: 28px; padding: 0 12px;
@@ -151,6 +151,10 @@ input[type=range] { width: 150px; accent-color: var(--accent); }
 .toast { max-width: 440px; padding: 10px 14px; border-radius: 10px; background: var(--raised); border: 1px solid var(--line-2);
   box-shadow: 0 10px 28px rgba(0, 0, 0, .4); font-size: 13px; animation: in .18s ease-out; }
 .toast.ok { border-color: rgba(60, 201, 138, .45); } .toast.bad { border-color: rgba(255, 107, 107, .5); }
+.toast.crash { max-width: 480px; } /* (stays until dismissed or reported) */
+.crash-line { margin-top: 6px; font: 12px ui-monospace, Consolas, monospace; color: var(--text-2); word-break: break-word;
+  max-height: 4.5em; overflow: hidden; }
+.crash-actions { display: flex; gap: 8px; margin-top: 10px; }
 @keyframes in { from { opacity: 0; transform: translateY(6px); } }
 
 /* ---------------------------------------------------------------- cards (settings, tools) */

@@ -27,6 +27,9 @@
     background: var(--panel); border: 1px solid #2a3038; border-radius: 10px; display: none; text-align: center; }
   /* inside the Avatar Studio app (index.html?embed): just the avatar, the app has the buttons and status */
   .embed #hud, .embed #hint { display: none; }
+  /* for OBS (index.html?obs): only the avatar, on a transparent background (or ?bg=00ff00 for a colour key) */
+  .obs #hud, .obs #hint, .obs #note, .obs #step, .obs #drop { display: none !important; }
+  html.obs, .obs body { background: transparent; }
 </style>
 </head>
 <body>
@@ -56,6 +59,7 @@
 // three.js 0.160.0 and three-vrm 3.4.0 ship with the app (lib/), so the viewer needs no internet. Opened straight from
 // the folder (file://, no web server) the browser won't run local modules: only that case loads them from unpkg.
 if (new URLSearchParams(location.search).has('embed')) document.documentElement.classList.add('embed');
+if (new URLSearchParams(location.search).has('obs')) document.documentElement.classList.add('obs');
 const lib = location.protocol === 'file:'
   ? { three: 'https://unpkg.com/three@0.160.0/', vrm: 'https://unpkg.com/@pixiv/three-vrm@3.4.0/lib/' }
   : { three: './lib/three-0.160.0/', vrm: './lib/three-vrm-3.4.0/' };
@@ -73,11 +77,19 @@ import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
 const pos = (p) => new THREE.Vector3(p[0], p[1], -p[2]);
 const quat = (q) => new THREE.Quaternion(-q[0], -q[1], q[2], q[3]);
 
+// ?obs: for an OBS browser source. Transparent unless ?bg= gives a colour (e.g. 00ff00 for a colour key); ?view=
+// full, upper (the default) or face frames the avatar; the avatar picked in the app (Settings > OBS) loads by itself
+const params = new URLSearchParams(location.search);
+const OBS = params.has('obs');
+const bgParam = /^[0-9a-f]{6}$/i.test(params.get('bg') || '') ? params.get('bg') : null;
+const VIEW = ['full', 'upper', 'face'].includes(params.get('view')) ? params.get('view') : 'upper';
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x111418);
+scene.background = OBS ? (bgParam ? new THREE.Color(`#${bgParam}`) : null) : new THREE.Color(0x111418);
+if (OBS && bgParam) document.body.style.background = `#${bgParam}`;
 const camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 0.01, 50);
 camera.position.set(0, 1.3, -2.6);  // the avatar faces -Z here, so look at it from the front
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: OBS });
+if (OBS) renderer.setClearColor(0x000000, 0);
 renderer.setPixelRatio(devicePixelRatio);
 renderer.setSize(innerWidth, innerHeight);
 document.body.appendChild(renderer.domElement);
@@ -89,6 +101,15 @@ const grid = new THREE.GridHelper(4, 16, 0x3a4450, 0x262c34);
 scene.add(grid);
 const camMarker = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.12, 4), new THREE.MeshStandardMaterial({ color: 0x8b939c }));
 camMarker.position.set(0, 0.06, -1.2); camMarker.rotation.x = -Math.PI / 2; scene.add(camMarker);  // webcam spot, on the floor
+if (OBS) grid.visible = camMarker.visible = false;
+// OBS framing around the avatar's head (headY: its height in metres): whole body, head and shoulders down to the
+// waist, or the face
+function frameView(headY = 1.45) {
+  const [y, dist] = VIEW === 'full' ? [headY * 0.55, headY * 1.9] : VIEW === 'face' ? [headY + 0.02, 0.6] : [headY - 0.22, 1.35];
+  controls.target.set(0, y, 0);
+  camera.position.set(0, y + (VIEW === 'full' ? 0.1 : 0.02), -dist);
+  controls.update();
+}
 
 let rest = null, avatar = null;
 const joints = {}, links = [];
@@ -161,6 +182,7 @@ const rawGeo = new THREE.BufferGeometry();
 rawGeo.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(33 * 3), 3));
 const raw = new THREE.Points(rawGeo, new THREE.PointsMaterial({ color: 0x5ad19a, size: 0.03 }));
 scene.add(raw);
+if (OBS) raw.visible = false;
 document.getElementById('raw').onchange = (e) => raw.visible = e.target.checked;
 
 const SHAPES = ['Blink_L', 'Blink_R', 'A', 'I', 'U', 'E', 'O', 'Joy', 'Angry', 'Sorrow', 'Surprised'];
@@ -210,6 +232,11 @@ async function loadVRM(source, name) {
     proportions = null;  // a new avatar: measure it
     sendProportions();
     document.getElementById('avatar-name').textContent = name || vrm.meta?.name || vrm.meta?.title || 'VRM';
+    if (OBS) {
+      vrm.scene.updateMatrixWorld(true);
+      const head = vrm.humanoid.getNormalizedBoneNode('head');
+      frameView(head ? head.getWorldPosition(new THREE.Vector3()).y : 1.45);
+    }
     document.getElementById('skel').checked = false; avatar && (avatar.visible = false);
   } catch (e) {
     console.error(e);
@@ -288,6 +315,10 @@ window.viewerDebug = { get vrm() { return vrm; }, get model() { return model; },
     renderer.render(scene, camera); } };  // for automated checks from the browser console
 const vrmUrl = new URLSearchParams(location.search).get('vrm');
 if (vrmUrl) loadVRM(vrmUrl);
+else if (OBS) {
+  frameView();
+  fetch('/avatar.vrm').then((r) => (r.ok ? r.arrayBuffer() : null)).then((b) => b && loadVRM(b)).catch(() => {});
+}
 
 // The studio sends ~30 poses a second but the screen redraws 60+ times: setting each pose directly made the avatar
 // step (visible as jitter). Poses become targets that every drawn frame glides toward. The glide's time constant

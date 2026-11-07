@@ -116,7 +116,28 @@ function toast(text, kind = '') {
   $('#toasts').appendChild(t);
   setTimeout(() => t.remove(), kind === 'bad' ? 9000 : 4500);
 }
-const NOTABLE = /calibrated|calibration|saved|profile|failed|unavailable|busy|lost|could not|can't|reset to defaults/i;
+// something stopped by itself: what stopped, its last message, and a bug report already filled in with it
+const MODE_NAMES = { live: 'Tracking', latency: 'The latency test', test_pattern: 'The avatar test',
+  train_face: 'Face training', gesture: 'Gesture recording' };
+const TOOL_NAMES = { 'train-gestures': 'Gesture training', 'tune-smoothing': 'Smoothing tuning', mocap: 'Motion capture' };
+function crashNotice(what, lines = [], after = '', verb = 'stopped unexpectedly') {
+  const last = [...lines].reverse().find((l) => l.trim()) || '';
+  const t = document.createElement('div');
+  t.className = 'toast bad crash';
+  t.innerHTML = `<b>${esc(what)} ${esc(verb)}.</b>${after ? ` ${esc(after)}` : ''}`
+    + (last ? `<div class="crash-line">${esc(last)}</div>` : '')
+    + '<div class="crash-actions"><button class="btn primary" data-act="report">Report this problem</button><button class="btn ghost" data-act="close">Dismiss</button></div>';
+  const close = () => t.parentNode && t.parentNode.removeChild(t);
+  $('[data-act="close"]', t).onclick = close;
+  $('[data-act="report"]', t).onclick = () => {
+    close();
+    openReport(`${what} ${verb}.\n\nLast messages:\n${lines.slice(-8).join('\n')}`);
+  };
+  const box = $('#toasts');
+  box.insertBefore(t, box.firstChild);
+  $$('.toast.crash', box).slice(3).forEach((old) => box.removeChild(old));  // (at most three at once)
+}
+const NOTABLE = /calibrated|calibration|saved|profile|failed|unavailable|busy|lost|could not|can't|reset to defaults|field of view set/i;
 function friendly(line) {  // the engine's messages, minus file paths and lists of what was measured
   if (/^calibrated \(/.test(line)) return 'Neutral pose calibrated';
   if (/^video saved -> /.test(line)) return `Recording saved: ${line.split('-> ')[1]}`;
@@ -158,11 +179,18 @@ function applyState(s) {
   const e = s.engine;
   if (e) {
     for (const line of newLines(e)) {
-      if (NOTABLE.test(line)) toast(friendly(line), /failed|unavailable|busy|lost|could not|can't/i.test(line) ? 'bad' : 'ok');
+      const part = /^(.+?) failed on a frame/.exec(line);  // (an error the engine carried on after)
+      if (part) crashNotice(`${part[1].charAt(0).toUpperCase()}${part[1].slice(1)}`, e.lines, 'Tracking carries on.', 'had an error');
+      else if (NOTABLE.test(line)) toast(friendly(line), /failed|unavailable|busy|lost|could not|can't/i.test(line) ? 'bad' : 'ok');
     }
-    if (!e.running && e.code && app.toldExit !== e.id) {  // (it ended by itself, with an error)
+    if (!e.running && e.code && !e.stopped && app.toldExit !== e.id) {  // (it ended by itself, with an error)
       app.toldExit = e.id;
-      toast(`Tracking stopped: ${e.lines.slice(-1)[0] || 'unknown error'}`, 'bad');
+      crashNotice(MODE_NAMES[e.mode] || 'Tracking', e.lines);
+    }
+    const wl = e.running && app.status ? app.status.wilor : null;  // (the finger helper ended; tracking goes on)
+    if (wl === 'failed' && app.toldWilor !== e.id) {
+      app.toldWilor = e.id;
+      crashNotice('The WiLoR finger helper', e.lines.filter((l) => /wilor/i.test(l)), 'Fingers carry on with MediaPipe.');
     }
     if (e.mode === 'latency') {
       const result = e.lines.filter((l) => /clap test|motion -> avatar/i.test(l));
@@ -175,6 +203,11 @@ function applyState(s) {
     showLog(JOB_LOGS[name] || name, j);
     showProgress(name, j);
     for (const line of newLines(j)) if (/saved|written|done|->/i.test(line) && !j.running) toast(friendly(line), 'ok');
+    app.toldJobs = app.toldJobs || {};
+    if (!j.running && j.code && !j.stopped && app.toldJobs[name] !== j.id) {
+      app.toldJobs[name] = j.id;
+      crashNotice(TOOL_NAMES[name] || name, j.lines);
+    }
   }
   if (wasRunning && !engineRunning()) {
     app.status = null; app.stopping = false;
@@ -454,6 +487,9 @@ const SETTINGS = [
     ['idle', 'toggle', 'Idle motion', 'Breathing, blinks, easing back when tracking is lost'],
     ['root_motion', 'toggle', 'Move the avatar with you', 'Stepping closer or sideways moves it'],
     ['mirror_avatar', 'toggle', 'Mirror the avatar', 'Raise your right hand and the avatar raises its left']]],
+  ['Camera and distance', [
+    ['camera_fov', 'range', 'Camera field of view', 'How wide your webcam sees, side to side: sets how far away you are on the avatar', 40, 110, 1],
+    ['eye_spacing_cm', 'range', 'Your eye spacing', 'Pupil to pupil (most adults 5.5–7 cm)', 5, 7.5, 0.1]]],
   ['Performance and outputs', [
     ['max_fps', 'range', 'Frame-rate cap', '0 = as fast as the camera; lower leaves CPU for games and OBS', 0, 30, 5],
     ['gpu_tracking', 'toggle', 'GPU tracking', 'Body and face models on the GPU: less delay (from the next start)'],
@@ -466,7 +502,8 @@ const SETTINGS = [
     ['show_face_monitor', 'toggle', 'Face monitor', 'Mouth close-up and live face shapes'],
     ['show_panel', 'toggle', 'Depth panel', 'Distance and the side view']]],
 ];
-const fmt = (k, v) => k === 'max_fps' ? (+v ? `${v}` : 'off') : k.startsWith('predict') ? `${v}` : (+v).toFixed(2);
+const fmt = (k, v) => k === 'max_fps' ? (+v ? `${v}` : 'off') : k.startsWith('predict') ? `${v}`
+  : k === 'camera_fov' ? `${Math.round(v)}°` : k === 'eye_spacing_cm' ? `${(+v).toFixed(1)} cm` : (+v).toFixed(2);
 function buildSettings() {
   const grid = $('#settings-grid');
   let html = '';
@@ -479,6 +516,8 @@ function buildSettings() {
       html += `<div class="row ${type}"><div class="label">${esc(label)}<small>${esc(help)}</small></div><div class="ctl">${ctl}</div></div>`;
     }
     if (title === 'Motion') html += `<div class="actions"><button class="btn" id="btn-reset-depth" title="When the avatar's distance looks wrong">Reset depth</button></div>`;
+    if (title === 'Camera and distance') html += `<div class="row"><div class="label">Measure it<small>Sit facing the camera, measure from the camera to your eyes, enter it: the field of view is worked out</small></div>
+      <div class="ctl"><input type="number" id="fov-distance" min="20" max="400" step="1" placeholder="cm" style="width:70px"><button class="btn" id="btn-measure-fov">Measure</button></div></div>`;
     html += '</div>';
   }
   html += `<div class="card"><h2>Devices and start</h2>
@@ -487,6 +526,12 @@ function buildSettings() {
     <div class="row"><div class="label">Third camera</div><div class="ctl"><select class="plain" id="sel-camera3"></select></div></div>
     <div class="row"><div class="label">Start tracking when the app opens</div><div class="ctl"><label class="switch"><input type="checkbox" data-pref="autostart"><span></span></label></div></div>
     <div class="row ${app.tray ? '' : 'hidden'}" id="row-tray"><div class="label">Minimize to the tray<small>An icon by the clock; its menu starts and stops tracking</small></div><div class="ctl"><label class="switch"><input type="checkbox" data-pref="tray"><span></span></label></div></div>
+  </div>
+  <div class="card"><h2>OBS</h2><p class="muted small" style="margin:4px 0 8px">Your avatar in OBS without a VTuber app: add a <b>Browser</b> source with this address (while tracking runs; press Refresh in the source after starting tracking).</p>
+    <div class="row"><div class="label">Avatar<small id="obs-avatar-name">none picked: a skeleton shows</small></div><div class="ctl"><button class="btn" id="btn-obs-avatar">Choose .vrm…</button></div></div>
+    <div class="row"><div class="label">Background</div><div class="ctl"><select class="plain" id="sel-obs-bg"><option value="">Transparent</option><option value="00ff00">Green (colour key)</option><option value="0000ff">Blue (colour key)</option></select></div></div>
+    <div class="row"><div class="label">Framing</div><div class="ctl"><select class="plain" id="sel-obs-view"><option value="upper">Upper body</option><option value="full">Whole body</option><option value="face">Face</option></select></div></div>
+    <div class="row"><input type="text" id="obs-url" readonly style="flex:1;font-family:ui-monospace,Consolas,monospace"><button class="btn" id="btn-obs-copy">Copy</button></div>
   </div>
   <div class="card"><h2>Updates</h2>
     <div class="row"><div class="label">Version<small id="version-detail"></small></div><div class="ctl"><span class="val" id="version-now"></span></div></div>
@@ -519,6 +564,11 @@ function buildSettings() {
   $('#sel-camera2').onchange = (e) => setPref({ camera2: e.target.value });
   $('#sel-camera3').onchange = (e) => setPref({ camera3: e.target.value });
   $('#btn-reset-depth').onclick = () => { if (!send({ type: 'action', name: 'reset_depth' })) toast('Start tracking first'); };
+  $('#btn-measure-fov').onclick = () => {
+    const cm = parseFloat($('#fov-distance').value);
+    if (!(cm >= 20 && cm <= 400)) { toast('Enter your distance from the camera in cm (20–400)'); return; }
+    if (!send({ type: 'action', name: 'measure_fov', arg: cm })) toast('Start tracking first');
+  };
   $('#btn-check-updates').onclick = async () => { app.update = await call('check_updates'); renderUpdate(); };
   $('#btn-profile-save').onclick = async () => {
     const name = $('#profile-name').value.trim();
@@ -539,7 +589,24 @@ function buildSettings() {
     setTimeout(loadSettings, 500);
   };
   $('#btn-uninstall').onclick = openUninstall;
+  $('#sel-obs-bg').onchange = async (e) => { await setPref({ obs_bg: e.target.value }); fillObs(); };
+  $('#sel-obs-view').onchange = async (e) => { await setPref({ obs_view: e.target.value }); fillObs(); };
+  $('#btn-obs-copy').onclick = () => { $('#obs-url').select(); document.execCommand('copy'); toast('OBS address copied', 'ok'); };
+  $('#btn-obs-avatar').onclick = async () => {
+    const r = await call('choose_obs_avatar');
+    if (r.ok) { app.prefs.obs_avatar = r.name; fillObs(); toast(`OBS avatar: ${r.name} (press Refresh in the OBS source)`, 'ok'); }
+    else if (!r.cancelled) toast(r.error, 'bad');
+  };
+  fillObs();
   $('#btn-report').onclick = () => openReport($('#report-desc').value);
+}
+
+function fillObs() {  // Settings > OBS: the browser-source address for the chosen look
+  const p = app.prefs || {}, bg = p.obs_bg || '', view = p.obs_view || 'upper';
+  if (!$('#obs-url')) return;
+  $('#sel-obs-bg').value = bg; $('#sel-obs-view').value = view;
+  $('#obs-url').value = `http://127.0.0.1:8000/?obs${view !== 'upper' ? `&view=${view}` : ''}${bg ? `&bg=${bg}` : ''}`;
+  $('#obs-avatar-name').textContent = p.obs_avatar ? p.obs_avatar : 'none picked: a skeleton shows';
 }
 
 // ---------------------------------------------------------------- report a problem (core/bugreport.py)
@@ -580,7 +647,7 @@ const GUIDE = [
     VTube Studio and allow the plugin when it asks.</p>
     <div class="conn" id="guide-conn"></div>
     <div class="actions"><button class="btn" id="guide-conn-check"><svg class="i"><use href="#i-cast"/></svg>Check again</button></div>
-    <p class="muted small">No VTuber app? The built-in 3D viewer shows your avatar (drop your .vrm on it); in OBS add a browser source with http://127.0.0.1:8000.</p>`],
+    <p class="muted small">No VTuber app? The built-in 3D viewer shows your avatar (drop your .vrm on it); in OBS add a browser source with the address from Settings › OBS.</p>`],
   ['You\'re set', () => `
     <p>Your avatar follows you now. For an even closer match, <b>Getting started</b> has a few more one-time steps:
     your vowels and voice for lip sync, open hands and fists, eye gaze, and a 2-minute face training.</p>
@@ -708,6 +775,7 @@ function fillSettings() {
   $('#settings-lead').textContent = tracking() ? 'Changes apply at once and are kept.'
     : 'Tracking is off: changes are saved and used when it starts.';
   fillDevices();
+  fillObs();
 }
 function changeSetting(key, value) {
   app.editing = performance.now();

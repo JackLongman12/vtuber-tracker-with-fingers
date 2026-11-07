@@ -380,6 +380,28 @@ class StreamView(StudioWindow):
                     traceback.print_exc()
 
 
+OBS_AVATAR = user_file("obs_avatar.vrm")  # the avatar for index.html?obs, picked in the app (Settings > OBS)
+
+
+def serve_obs_avatar(handler):
+    """GET /avatar.vrm: the OBS viewer's avatar (an OBS browser source can't have a file dropped on it)."""
+    import shutil
+    try:
+        f = open(OBS_AVATAR, "rb")
+    except OSError:
+        handler.send_error(404, "No avatar picked for OBS (Settings > OBS in the app)")
+        return
+    with f:
+        handler.send_response(200)
+        handler.send_header("Content-Type", "model/gltf-binary")
+        handler.send_header("Content-Length", str(os.fstat(f.fileno()).st_size))
+        handler.end_headers()
+        try:
+            shutil.copyfileobj(f, handler.wfile)
+        except OSError:  # (the page went away)
+            pass
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--camera", type=int, default=0)
@@ -405,8 +427,8 @@ def main():
                     help="multiply all face shapes (e.g. 1.3 = more exaggerated, 0.8 = subtler)")
     ap.add_argument("--no-auto-range", action="store_true",
                     help="don't stretch each face shape to your own maximum")
-    ap.add_argument("--fov", type=float, default=65.0)
-    ap.add_argument("--ipd", type=float, default=6.3)
+    ap.add_argument("--fov", type=float, help="webcam field of view in degrees for this run (else the setting)")
+    ap.add_argument("--ipd", type=float, help="your pupil distance in cm for this run (else the setting)")
     ap.add_argument("--record", help="save the raw camera video here (mp4) for replay; extra cameras go next to it, "
                                      "in step frame for frame (take_camera2.mp4, take_camera3.mp4) for mocap.py")
     ap.add_argument("--bvh", help="save the avatar motion here as BVH when you quit")
@@ -442,16 +464,21 @@ def main():
         "auto_range": False if args.no_auto_range else None,
         "expressiveness": args.expressiveness if args.expressiveness != 1.0 else None,
         "mic_lipsync": False if args.no_mic else None, "vts": True if args.vts else None,
-        "wilor_fingers": False if args.no_wilor else None}.items()
+        "wilor_fingers": False if args.no_wilor else None,
+        "camera_fov": args.fov, "eye_spacing_cm": args.ipd}.items()
         if v is not None})
+
+    def optics():
+        """(field of view, eye spacing) from the settings, kept to what a webcam and a person can have."""
+        return float(np.clip(settings.camera_fov, 30, 120)), float(np.clip(settings.eye_spacing_cm, 4.5, 8.0))
 
     cam_job = None  # the webcam opens (DirectShow can take a second) while the models load
     if not args.input and not args.test_pattern:
         from concurrent.futures import ThreadPoolExecutor
         cam_job = ThreadPoolExecutor(1).submit(CameraStream, args.camera, *map(int, args.resolution.split("x")),
                                                fps=args.fps)
-    tracker = AllInOneTracker(video=True, pose_model=args.pose, fov=args.fov, ipd_cm=args.ipd, max_faces=1,
-                              upper_body=not args.full_body, gpu_tracking=args.gpu_tracking or settings.gpu_tracking)
+    tracker = AllInOneTracker(video=True, pose_model=args.pose, fov=optics()[0], ipd_cm=optics()[1],
+                              max_faces=1, upper_body=not args.full_body, gpu_tracking=args.gpu_tracking or settings.gpu_tracking)
     rig = AvatarRig(legs=args.full_body)
     rig.calib = load_json(CALIB_PATH)
     gestures = GestureRecognizer()
@@ -498,6 +525,11 @@ def main():
         rig.predict_body_s = settings.predict_body_ms / 1000
         rig.link_blinks, rig.body_follows_head = settings.link_blinks, settings.body_follows_head
         rig.no_clip, rig.body_scale = settings.no_clip, settings.body_size
+        if optics() != (tracker.fov, tracker.ipd_cm):  # distances so far (and the calibration's) follow the change
+            k = tracker.set_optics(*optics())
+            if rig.calib and rig.calib.get("distance_cm"):
+                rig.calib["distance_cm"] = round(rig.calib["distance_cm"] * k, 1)
+                save_json(CALIB_PATH, rig.calib)
         if settings.auto_range and rig.auto_range is None:
             rig.auto_range = AutoRange()
         elif not settings.auto_range:
@@ -548,7 +580,7 @@ def main():
         preview = PreviewHub()
     if ws:
         try:
-            routes = {"/camera.mjpg": preview.serve} if preview else None
+            routes = {"/avatar.vrm": serve_obs_avatar, **({"/camera.mjpg": preview.serve} if preview else {})}
             viewer_url = serve_viewer(args.viewer_port, routes=routes) + (f"/?ws=ws://127.0.0.1:{args.ws_port}"
                                                                           if args.ws_port != 8765 else "")
             print(f"3D viewer: {viewer_url}")
@@ -645,6 +677,7 @@ def main():
             multicam.calib_start()
 
     errors = {}  # part -> how many frames it failed on
+    last_depth = [None]  # the newest distance reading (for measuring the field of view)
     last_avatar = {"bones": {}, "root": np.zeros(3), "arkit": {}, "vrm": {}, "gaze": None}
 
     def guarded(part, fn, *a, default=None, **kw):
@@ -668,6 +701,24 @@ def main():
         saved.save()
         apply_settings()
 
+    def measure_fov(true_cm):
+        try:
+            true_cm = float(true_cm)
+        except (TypeError, ValueError):
+            return
+        d = last_depth[0]
+        if not (20 <= true_cm <= 400):
+            print("could not measure the field of view: enter a distance between 20 and 400 cm", flush=True)
+        elif not d or d.get("source") != "eyes":
+            print("could not measure the field of view: look straight at the camera so your eyes are seen",
+                  flush=True)
+        else:  # the distance is proportional to the focal length: scale it by true / measured
+            half = math.atan(math.tan(math.radians(tracker.fov) / 2) * d["distance_cm"] / true_cm)
+            fov = round(float(np.clip(math.degrees(2 * half), 30, 120)), 1)
+            change_settings({"camera_fov": fov})
+            print(f"field of view set to {fov:.0f} degrees (you were at {d['distance_cm']:.0f} cm, now "
+                  f"{true_cm:.0f} cm)", flush=True)
+
     def handle_message(m):
         """Messages from the settings page."""
         kind = m.get("type")
@@ -690,6 +741,8 @@ def main():
                 nonlocal_hand_cal_start()
             elif name == "reset_depth":
                 tracker.depth.reset()
+            elif name == "measure_fov":  # "I'm this many cm from the camera": the field of view that makes it so
+                measure_fov(m.get("arg"))
             elif name == "toggle_expression" and m.get("arg") in set(hotkeys.values()):  # (the page's buttons)
                 toggle_expression(m.get("arg"))
         elif kind == "key" and window is not None:  # the app's buttons and keyboard: like keys in the studio window
@@ -791,7 +844,8 @@ def main():
                 res = guarded("extra cameras", multicam.fuse, res, extra_res, default=res)
             t_c = time.perf_counter()
             timing["tracking"] += t_c - t_b
-            f = focal_px(frame.shape[1], args.fov)
+            f = focal_px(frame.shape[1], tracker.fov)
+            last_depth[0] = res["depth"]
             if wilor is not None and not no_camera and not covered and not paused:  # finger shapes from WiLoR (newest result)
                 guarded("WiLoR", wilor.submit, frame, [h for h in res["hands"] if "_cam" not in h])
                 guarded("WiLoR", wilor.apply, res)

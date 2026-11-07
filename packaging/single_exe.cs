@@ -1,6 +1,7 @@
 // Avatar Studio as one file: this small program carries the whole app (a zip appended to the end of this exe).
-// First start: unpack it once into %LOCALAPPDATA%\AvatarStudio\app\<build> (a progress window shows). Every start:
-// run the app from there with the same arguments and return its exit code. Unpacking once instead of on every
+// First start: unpack it once into %LOCALAPPDATA%\AvatarStudio\app\<build> (a progress window shows, and stays until
+// the app's own window is up, so nothing goes blank in between). Every start: run the app from there with the same
+// arguments and return its exit code. Unpacking once instead of on every
 // start (PyInstaller's one-file mode unpacks ~800 MB to a temp folder each time) keeps later starts instant.
 // Built by build_dist.py with the C# compiler that comes with Windows (.NET Framework 4.x).
 using System;
@@ -24,9 +25,12 @@ static class SingleExe
     static int Main(string[] args)
     {
         string self = Assembly.GetExecutingAssembly().Location;
-        string root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                                   "AvatarStudio", "app");
+        string root = Environment.GetEnvironmentVariable("AVATARSTUDIO_UNPACK_DIR");  // (tests: another cache)
+        if (string.IsNullOrEmpty(root))
+            root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                                "AvatarStudio", "app");
         string dir;
+        Process started = null;  // (a first start starts the app from the progress window)
         try
         {
             // the version is the zip comment at the very end of this file: reading 128 bytes is much quicker
@@ -50,7 +54,8 @@ static class SingleExe
                     try { mutex.WaitOne(); } catch (AbandonedMutexException) { }
                     try
                     {
-                        if (!File.Exists(Path.Combine(dir, ".ready")) && !Unpack(self, root, build))
+                        if (!File.Exists(Path.Combine(dir, ".ready")) &&
+                            !Unpack(self, root, build, () => Start(dir, args, self), Windowed(args), out started))
                             return 1;
                     }
                     finally { mutex.ReleaseMutex(); }
@@ -64,17 +69,9 @@ static class SingleExe
             return 1;
         }
 
-        var psi = new ProcessStartInfo(Path.Combine(dir, AppExe), Quote(args))
-        {
-            WorkingDirectory = dir,
-            UseShellExecute = false,
-            // the launcher, viewer and settings windows need no console; other tools get one for their messages
-            CreateNoWindow = args.Length == 0 || args[0] == "viewer" || args[0] == "settings",
-        };
-        psi.EnvironmentVariables["AVATARSTUDIO_EXE"] = self;  // where this file is (WiLoR helper lookup)
         try
         {
-            using (var p = Process.Start(psi))
+            using (var p = started ?? Start(dir, args, self))
             {
                 p.WaitForExit();
                 return p.ExitCode;
@@ -86,6 +83,25 @@ static class SingleExe
                             MessageBoxButtons.OK, MessageBoxIcon.Error);
             return 1;
         }
+    }
+
+    // the app window, the viewer and settings windows (the other tools run in a console)
+    static bool Windowed(string[] args)
+    {
+        return args.Length == 0 || args[0] == "viewer" || args[0] == "settings";
+    }
+
+    static Process Start(string dir, string[] args, string self)
+    {
+        var psi = new ProcessStartInfo(Path.Combine(dir, AppExe), Quote(args))
+        {
+            WorkingDirectory = dir,
+            UseShellExecute = false,
+            // the launcher, viewer and settings windows need no console; other tools get one for their messages
+            CreateNoWindow = Windowed(args),
+        };
+        psi.EnvironmentVariables["AVATARSTUDIO_EXE"] = self;  // where this file is (WiLoR helper lookup)
+        return Process.Start(psi);
     }
 
     static string TailBuild(string self)
@@ -109,9 +125,14 @@ static class SingleExe
     }
 
     // Unpack into <root>\<build>.partial, then rename it into place, so a cancelled or failed first start never
-    // leaves a half-unpacked app behind that looks complete.
-    static bool Unpack(string self, string root, string build)
+    // leaves a half-unpacked app behind that looks complete. Several threads unpack at once (each with its own
+    // reader of the zip): decompressing is most of the time, and one core did it all before (7.4 s -> 3.2 s here).
+    // Then the app is started (start()) and the window stays until the app's window shows (or 60 s).
+    static bool Unpack(string self, string root, string build, Func<Process> start, bool waitWindow,
+                       out Process started)
     {
+        started = null;
+        Process app = null;
         Directory.CreateDirectory(root);
         string final = Path.Combine(root, build), part = final + ".partial";
         var form = new Form
@@ -122,6 +143,7 @@ static class SingleExe
         var label = new Label { Text = "Preparing Avatar Studio (first start of this version only)...",
                                 Left = 16, Top = 16, Width = 420 };
         var bar = new ProgressBar { Left = 16, Top = 48, Width = 410, Height = 22, Maximum = 1000 };
+        var startError = (Exception)null;
         form.Controls.Add(label);
         form.Controls.Add(bar);
         Exception error = null;
@@ -130,24 +152,66 @@ static class SingleExe
             try
             {
                 if (Directory.Exists(part)) Directory.Delete(part, true);
+                List<KeyValuePair<string, long>> files;
                 using (var zip = ZipFile.OpenRead(self))
+                    files = zip.Entries.Where(e => e.FullName.StartsWith("app/") && !e.FullName.EndsWith("/"))
+                               .Select(e => new KeyValuePair<string, long>(e.FullName, e.Length)).ToList();
+                long total = Math.Max(1, files.Sum(e => e.Value)), done = 0;
+                int n = Math.Max(1, Math.Min(Environment.ProcessorCount, 6));
+                var parts = Enumerable.Range(0, n).Select(_ => new List<string>()).ToArray();
+                var load = new long[n];
+                foreach (var f in files.OrderByDescending(f => f.Value))  // (biggest first, each to the least busy)
                 {
-                    var files = zip.Entries.Where(e => e.FullName.StartsWith("app/") && !e.FullName.EndsWith("/")).ToList();
-                    long total = Math.Max(1, files.Sum(e => e.Length)), done = 0;
-                    foreach (var e in files)
-                    {
-                        string target = Path.Combine(part, e.FullName.Substring(4).Replace('/', '\\'));
-                        Directory.CreateDirectory(Path.GetDirectoryName(target));
-                        e.ExtractToFile(target, true);
-                        done += e.Length;
-                        int v = (int)(done * 1000 / total);
-                        form.BeginInvoke((Action)(() => bar.Value = Math.Min(v, 1000)));
-                    }
+                    int i = Array.IndexOf(load, load.Min());
+                    parts[i].Add(f.Key);
+                    load[i] += Math.Max(f.Value, 4096);
                 }
+                var errors = new List<Exception>();
+                var threads = parts.Select(names => new Thread(() =>
+                {
+                    try
+                    {
+                        using (var zip = ZipFile.OpenRead(self))
+                        {
+                            foreach (string name in names)
+                            {
+                                var e = zip.GetEntry(name);
+                                string target = Path.Combine(part, name.Substring(4).Replace('/', '\\'));
+                                Directory.CreateDirectory(Path.GetDirectoryName(target));
+                                e.ExtractToFile(target, true);
+                                int v = (int)(Interlocked.Add(ref done, e.Length) * 1000 / total);
+                                form.BeginInvoke((Action)(() => bar.Value = Math.Max(bar.Value, Math.Min(v, 1000))));
+                            }
+                        }
+                    }
+                    catch (Exception ex) { lock (errors) errors.Add(ex); }
+                })).ToList();
+                threads.ForEach(t => t.Start());
+                threads.ForEach(t => t.Join());
+                if (errors.Count > 0) throw errors[0];
                 File.WriteAllText(Path.Combine(part, ".ready"), build);
                 if (Directory.Exists(final)) Directory.Delete(final, true);
                 Directory.Move(part, final);
                 Prune(root, build);
+                // start the app now and keep this window until its window is up (it takes a few seconds the
+                // first time, while Windows checks the new files)
+                form.BeginInvoke((Action)(() =>
+                {
+                    label.Text = "Starting Avatar Studio...";
+                    bar.Style = ProgressBarStyle.Marquee;
+                }));
+                try
+                {
+                    app = start();
+                    var waited = Stopwatch.StartNew();
+                    while (waitWindow && waited.Elapsed.TotalSeconds < 60 && !app.HasExited)
+                    {
+                        app.Refresh();
+                        if (app.MainWindowHandle != IntPtr.Zero) break;
+                        Thread.Sleep(100);
+                    }
+                }
+                catch (Exception ex) { startError = ex; }
             }
             catch (Exception ex) { error = ex; }
             form.BeginInvoke((Action)(() => form.Close()));
@@ -164,6 +228,8 @@ static class SingleExe
                             MessageBoxButtons.OK, MessageBoxIcon.Error);
             return false;
         }
+        if (startError != null) throw startError;  // (Main shows it)
+        started = app;
         return true;
     }
 

@@ -400,6 +400,22 @@ class AllInOneTracker:
         two DirectML sessions running at the same time on different threads hung the GPU."""
         return self.gpu.worker.submit(fn, *args, background=True) if self.gpu is not None else self.pool.submit(fn, *args)
 
+    def set_optics(self, fov, ipd_cm):
+        """A new field of view / eye spacing (the settings page) while tracking: distances so far (smoothed, the
+        reference, the body estimate's ratio to the eyes) are rescaled to match, so nothing jumps. -> the factor
+        distances changed by (the calibration's distance needs the same)."""
+        k_f = math.tan(math.radians(self.fov) / 2) / math.tan(math.radians(fov) / 2)
+        k = k_f * ipd_cm / self.ipd_cm
+        self.fov, self.ipd_cm = fov, ipd_cm
+        d = self.depth
+        if d.dist is not None:
+            d.dist, d.vel = d.dist * k, d.vel * k
+        if d.ref is not None:
+            d.ref *= k
+        if self.body_scale is not None:  # (the body's size doesn't depend on the eye spacing)
+            self.body_scale *= k / k_f
+        return k
+
     def depth_source(self, face_d, body_d, yaw, t):
         """Combine the eye- and body-based distances without jumps when one of them comes or goes:
         - the eyes are ignored when the head is turned more than EYE_MAX_YAW (they read wrong there)

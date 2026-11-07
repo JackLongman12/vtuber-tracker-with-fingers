@@ -34,6 +34,8 @@ class Settings:
     body_size: float = 1.0           # body thickness for no_clip (bulkier avatar -> higher)
     mirror_avatar: bool = False
     root_motion: bool = True
+    camera_fov: float = 65.0         # the webcam's horizontal field of view (degrees): sets the absolute distance
+    eye_spacing_cm: float = 6.3      # your pupil-to-pupil distance (cm): the ruler for the distance
     max_fps: float = 0.0             # 0 = as fast as the camera
     vts: bool = False                # send to VTube Studio (Live2D)
     wholebody: bool = True           # GPU whole-body model: left/right of crossing hands

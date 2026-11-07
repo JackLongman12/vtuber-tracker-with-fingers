@@ -15,7 +15,7 @@ were trained on are non-commercial (see [License](#license)).
 ## Download
 **[Download AvatarStudio.exe](https://github.com/JackLongman12/vtuber-tracker-with-fingers/releases/latest/download/AvatarStudio.exe)**
 (Windows 10/11, about 500 MB): one file with everything inside - models, 3D viewer, all tools. No Python, no setup:
-download it and double-click. The first start unpacks it once (about half a minute); later starts are quick, and it
+download it and double-click. The first start unpacks it once (a progress window, a few seconds); later starts are quick, and it
 offers updates by itself. Windows may warn about an unknown publisher (the app isn't code-signed): *More info* →
 *Run anyway*. Optional extra: the WiLoR finger helper needs its own setup (see [WiLoR fingers](#wilor-fingers-3d-hand-model-gpu)).
 
@@ -29,6 +29,16 @@ the app never updates to one by itself, and the Download link above stays on the
 - **Report a problem** (Settings): puts together a bug report (version, system, settings, recent log lines, with
   your user name, PC name, folder paths, email and network addresses taken out). You read all of it first; GitHub
   opens with it filled in, and nothing is sent until you press Submit there.
+- **Avatar in OBS without a VTuber app** (Settings → OBS): a browser-source address showing only your avatar, on a
+  transparent background (or green / blue for a colour key), framed on the upper body, the whole body or the face.
+  Pick your `.vrm` there once; the studio serves it to OBS (a browser source can't have a file dropped on it).
+- **Camera field of view and eye spacing** (Settings → Camera and distance): the absolute distance used to be
+  10–15% off unless `--fov` and `--ipd` were set on the command line. Now they're settings, and *Measure it* works
+  the field of view out from your real distance to the camera. Changing them while tracking rescales the distance
+  (and the calibration's) so the avatar doesn't jump.
+- **Crash notice:** when tracking, a tool or the WiLoR finger helper stops by itself (or a part of tracking fails and
+  it carries on), the app says what stopped, with its last message and a **Report this problem** button that opens
+  the bug report already filled in with it.
 - **Phantom hands dropped:** turned away from the camera, the hand model could "find" a hand in your hair. The avatar
   froze its head as if a hand covered your face and reached its arm up there. A hand further than 3.5 body sizes
   from both of the body model's wrists is now ignored (real hands on the test takes: at most 2.7).
@@ -92,8 +102,12 @@ releases of the repository in `avatarstudio/version.py`; publishing one is `tool
 `tools/build_dist.py` makes **one file: `Distributions/AvatarStudio.exe`** - nothing else next to it (no
 Python needed, no .bat files, no folders). The app (runtime, models, 3D viewer) is zipped onto the end of a small
 launcher (`packaging/single_exe.cs`, compiled with the C# compiler that comes with Windows). The first start of a
-version unpacks it once (progress window, about half a minute) into `%LOCALAPPDATA%\AvatarStudio\app\<version>`; every later
-start goes straight there. (PyInstaller's own one-file mode unpacks ~800 MB to a temporary folder on *every*
+version unpacks it once (progress window) into `%LOCALAPPDATA%\AvatarStudio\app\<version>`; every later
+start goes straight there. Unpacking runs on up to 6 cores at once (each thread with its own reader of the zip), and the
+progress window stays until the app's own window is up. On this laptop, a first start from a fresh copy: unpacked in
+3.0–3.5 s instead of 7.1–7.6 s, app window at 4.5–4.9 s instead of 8.6–9.0 s, and no moment with no window on screen
+(it was 2 s before). Before the progress window shows, Windows checks a newly downloaded 500 MB file once (2–5 s here);
+the launcher can't start any earlier than that. Later starts: 1.3 s to the app window. (PyInstaller's own one-file mode unpacks ~800 MB to a temporary folder on *every*
 start, which made each start slow.) A new build replaces the previous one in `Distributions`; the unpacked copies keep
 the current and the previous version.
 Arguments work as before: `AvatarStudio.exe studio --test-pattern`. The name stays the same from build to build, so the launcher's *Start menu + desktop shortcut* keeps working; the version is in its title bar. Old folder builds were removed;
@@ -656,6 +670,12 @@ that is already open brings it to the front. Its *Settings* / *open 3D viewer* l
   connected, took a dropped VRM and moved it.
 - **Browsers and OBS:** http://127.0.0.1:8000 and http://127.0.0.1:8000/settings.html work as before while the
   studio runs.
+- **OBS mode:** http://127.0.0.1:8000/?obs is the viewer with nothing but the avatar: no panel, grid or tracked
+  points, a transparent background (OBS browser sources keep it), and the camera framed on the avatar's head height
+  once it loads. `&bg=00ff00` (any hex colour) gives a colour-key background instead, `&view=full` / `upper` /
+  `face` the framing. The avatar is the `.vrm` picked in Settings → OBS: the app copies it to `obs_avatar.vrm` in your
+  data folder and the studio serves it as `/avatar.vrm` (same local-pages-only checks as the rest). Without one a
+  skeleton shows. OBS loads the page once, so start tracking first, or press *Refresh* in the source afterwards.
 - **Without WebView2** (it comes with Windows 11 and current Windows 10) or pywebview, the buttons open the browser
   as before. A WebView2 that fails to start also falls back to the browser.
 - **Startup** (this laptop, one-file app): the window is on screen 0.7–0.8 s after the click, and the page is
@@ -733,7 +753,7 @@ in your model's VTube Studio settings.
 | `--input take.mp4` | replay a recording (or a still image) through the whole pipeline |
 | `--bvh take.bvh` | save the motion as BVH when you quit (import in Blender: File → Import → BVH) |
 | `--log take.jsonl` | save every frame's tracking + avatar data |
-| `--fov 65 --ipd 6.3` | your webcam's horizontal field of view and your pupil distance (cm), for accurate depth |
+| `--fov 65 --ipd 6.3` | your webcam's horizontal field of view and your pupil distance (cm) for this run (normally the settings, Settings → Camera and distance) |
 | `--full-body` | also track legs (default: torso, arms, hands and head) |
 | `--resolution 640x480` | lower webcam resolution for slower PCs (default 1280x720) |
 | `--fps 60` | ask the webcam for 60 fps (halves its share of the delay, if it can; it says if it can't) |
@@ -916,7 +936,12 @@ from the camera, moving closer/away, and each hand's distance.
 **Depth:** distance comes from the gap between your pupils (about 6.3 cm on adults), or from your body's 3D size when
 your face isn't visible. The two are blended over 0.75 s when switching between them, and the body estimate is
 continuously rescaled to match the eyes. Replaying a recorded session, this cut the jump at a switch from 10.6% to
-2.0%. Changes in distance are precise; absolute distance is about 10–15% off unless `--fov` and `--ipd` match your setup.
+2.0%. Changes in distance are precise. The absolute distance depends on the camera's field of view and your eye
+spacing (Settings → Camera and distance, 65° and 6.3 cm by default): with the defaults it can be 10–15% off. *Measure
+it* there takes your real distance to the camera (measured to your eyes, looking straight at it) and sets the field
+of view so the reading matches: the distance scales with the focal length, so the new field of view is
+2·atan(tan(old/2) · measured / real). Changing either setting while tracking rescales the smoothed distance, its
+reference and the calibration's distance by the same factor, so the avatar doesn't move.
 
 ## Checks
 - `tests/test_rig.py` rebuilds the skeleton from the bone rotations it computes (forward kinematics) and compares each

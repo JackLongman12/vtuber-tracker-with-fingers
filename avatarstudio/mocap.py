@@ -458,8 +458,8 @@ def main():
     ap.add_argument("--no-wilor", action="store_true", help="fingers from MediaPipe only")
     ap.add_argument("--gpu-tracking", action="store_true", help="body and face models on the GPU")
     ap.add_argument("--no-overlay", action="store_true", help="skip overlay.mp4")
-    ap.add_argument("--fov", type=float, default=65.0)
-    ap.add_argument("--ipd", type=float, default=6.3)
+    ap.add_argument("--fov", type=float, help="camera field of view in degrees (default: the setting)")
+    ap.add_argument("--ipd", type=float, help="your pupil distance in cm (default: the setting)")
     ap.add_argument("--video2", help="the 2nd camera's video of the same take, in step frame for frame (default: "
                                      "<video>_camera2.mp4 next to the video, if it's there)")
     ap.add_argument("--video3", help="the 3rd camera's (default: <video>_camera3.mp4)")
@@ -469,7 +469,10 @@ def main():
         raise SystemExit(f"No video at {args.video} (record a take first, or pass a video file)")
     out = args.out or os.path.splitext(args.video)[0] + "_mocap"
     os.makedirs(out, exist_ok=True)
-    frames, fps, track_s, cameras = track(args.video, args, Settings.load(), extra_videos(args))
+    settings = Settings.load()
+    args.fov = args.fov or settings.camera_fov  # (the same as live tracking, from Settings > Motion)
+    args.ipd = args.ipd or settings.eye_spacing_cm
+    frames, fps, track_s, cameras = track(args.video, args, settings, extra_videos(args))
     process(frames, fps, track_s, args, out, cameras)
 
 

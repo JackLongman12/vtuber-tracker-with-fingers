@@ -127,6 +127,16 @@
     </section>
 
     <section>
+      <h2>Camera and distance</h2>
+      <div class="row"><label>Camera field of view<small>how wide your webcam sees: sets how far away you are</small></label>
+        <input type="range" data-key="camera_fov" min="40" max="110" step="1"><span class="val"></span></div>
+      <div class="row"><label>Your eye spacing<small>pupil to pupil, most adults 5.5–7 cm</small></label>
+        <input type="range" data-key="eye_spacing_cm" min="5" max="7.5" step="0.1"><span class="val"></span></div>
+      <div class="row"><label>Measure it<small>face the camera, enter your distance from it to your eyes</small></label>
+        <span><input type="text" id="fov-distance" placeholder="cm" style="width:64px"> <button id="measure-fov">Measure</button></span></div>
+    </section>
+
+    <section>
       <h2>Expressions</h2>
       <div class="buttons" id="expr"></div>
       <p class="hint">Click to toggle. Hotkeys: keys 1–9 in the studio window, or Ctrl+Alt+1–9 anywhere.
@@ -183,7 +193,8 @@ const url = wsParam && LOCAL_WS.test(wsParam) ? wsParam
   : `ws://${/^(localhost|\[::1\])$/i.test(location.hostname) ? location.hostname : '127.0.0.1'}:8765`;
 let ws, editing = 0;
 const send = (m) => ws && ws.readyState === 1 && ws.send(JSON.stringify(m));
-const fmt = (k, v) => k === 'max_fps' ? (+v ? `${v}` : 'off') : k.startsWith('predict') ? `${v}` : (+v).toFixed(2);
+const fmt = (k, v) => k === 'max_fps' ? (+v ? `${v}` : 'off') : k.startsWith('predict') ? `${v}`
+  : k === 'camera_fov' ? `${Math.round(v)}°` : k === 'eye_spacing_cm' ? `${(+v).toFixed(1)} cm` : (+v).toFixed(2);
 
 document.querySelectorAll('[data-key]').forEach((el) => {
   const k = el.dataset.key;
@@ -200,6 +211,10 @@ document.querySelectorAll('[data-action]').forEach((b) => b.onclick = () => send
 addEventListener('pywebviewready', () => document.querySelectorAll('[data-window]').forEach((a) => a.onclick = (e) => {
   e.preventDefault(); pywebview.api.open(a.dataset.window);
 }));
+document.getElementById('measure-fov').onclick = () => {
+  const cm = parseFloat(document.getElementById('fov-distance').value);
+  if (cm >= 20 && cm <= 400) send({ type: 'action', name: 'measure_fov', arg: cm });
+};
 document.getElementById('psave').onclick = () => {
   const name = document.getElementById('pname').value.trim();
   if (name) send({ type: 'save_profile', name });

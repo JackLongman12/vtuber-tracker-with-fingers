@@ -37,6 +37,7 @@ class Process:
 
     def __init__(self, name, args, mode=None):
         self.name, self.mode, self.started = name, mode or name, time.time()
+        self.stopped = False  # (stopped from the app: its exit code says nothing went wrong)
         self.lines, self.count = collections.deque(maxlen=400), 0  # (count: lines so far, for "what's new")
         os.makedirs(user_file("logs"), exist_ok=True)
         self.log = open(user_file(os.path.join("logs", f"{name}.log")), "w", encoding="utf-8")
@@ -63,7 +64,7 @@ class Process:
 
     def state(self, n=12):
         return {"name": self.name, "mode": self.mode, "id": int(self.started * 1000), "running": self.running(),
-                "code": self.proc.poll(), "since": round(time.time() - self.started, 1), "count": self.count,
+                "code": self.proc.poll(), "stopped": self.stopped, "since": round(time.time() - self.started, 1), "count": self.count,
                 "lines": list(self.lines)[-n:]}
 
     def stop(self, gently=None, wait=8.0):
@@ -71,6 +72,7 @@ class Process:
         that); after `wait` seconds it's terminated."""
         if not self.running():
             return
+        self.stopped = True
         if gently:
             try:
                 gently()
@@ -138,7 +140,7 @@ class AppApi:
     def set_prefs(self, values):
         self._prefs.update({k: v for k, v in values.items() if k in (
             "camera", "mic", "fps", "camera2", "camera3", "autostart", "tray", "layout", "check_updates",
-            "guide_done")})
+            "guide_done", "obs_bg", "obs_view")})
         self._save_prefs()
         return self._prefs
 
@@ -309,6 +311,29 @@ class AppApi:
             webview.FileDialog.OPEN, directory=os.path.dirname(last),
             file_types=("Videos (*.mp4;*.avi;*.mov;*.mkv;*.webm)", "All files (*.*)"))
         return picked[0] if picked else None
+
+    def choose_obs_avatar(self):
+        """Settings > OBS: a .vrm for the OBS viewer (index.html?obs), copied into your data folder (the studio
+        serves it as /avatar.vrm)."""
+        import shutil
+        import webview
+        picked = self._window.create_file_dialog(webview.FileDialog.OPEN, file_types=("VRM avatars (*.vrm)",))
+        if not picked:
+            return {"ok": False, "cancelled": True}
+        src = picked[0]
+        if not src.lower().endswith(".vrm") or not os.path.isfile(src):
+            return {"ok": False, "error": "Pick a .vrm file"}
+        if os.path.getsize(src) > 1 << 30:
+            return {"ok": False, "error": "That file is over 1 GB"}
+        dst = user_file("obs_avatar.vrm")
+        try:
+            shutil.copyfile(src, dst + ".partial")
+            os.replace(dst + ".partial", dst)
+        except OSError as e:
+            return {"ok": False, "error": f"Couldn't copy it: {e.strerror or e}"}
+        self._prefs["obs_avatar"] = os.path.splitext(os.path.basename(src))[0][:80]
+        self._save_prefs()
+        return {"ok": True, "name": self._prefs["obs_avatar"]}
 
     def open_mocap_results(self):
         from avatarstudio.core.os_support import open_folder
