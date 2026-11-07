@@ -21,6 +21,15 @@ NOISE = re.compile(r"^([WIEF]\d{4} \d|WARNING: All log messages before absl|WARN
                    r"INFO: Created TensorFlow Lite)")
 
 
+def _ipv6(m):
+    """A real IPv6 address (checked by Python, so times like 12:34:56 stay) other than ::1 -> <ip>."""
+    import ipaddress
+    try:
+        return m.group(0) if ipaddress.IPv6Address(m.group(0)).is_loopback else "<ip>"
+    except ValueError:
+        return m.group(0)
+
+
 def scrub(text):
     """Personal things out: home folder paths, user and computer name, email and network addresses."""
     home = os.path.expanduser("~")
@@ -32,6 +41,11 @@ def scrub(text):
             text = re.sub(rf"(?<![\w-]){re.escape(name)}(?![\w-])", "<name>", text, flags=re.I)
     text = re.sub(r"[\w.+-]+@[\w-]+(\.[\w-]+)+", "<email>", text)
     text = re.sub(r"\b(?!127\.0\.0\.1\b)(?!0\.0\.0\.0\b)\d{1,3}(\.\d{1,3}){3}\b", "<ip>", text)
+    # IPv6 (not ::1), hardware (MAC) addresses, access tokens (GitHub, generic "token=..." / "Bearer ...")
+    text = re.sub(r"(?<![\w:])[0-9a-f:]*:[0-9a-f:]*:[0-9a-f:]*(?![\w:])", _ipv6, text, flags=re.I)
+    text = re.sub(r"\b(?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2}\b", "<mac>", text, flags=re.I)
+    text = re.sub(r"\b(?:gh[pousr]|github_pat)_[A-Za-z0-9_]{16,}\b", "<token>", text)
+    text = re.sub(r"(?i)\b(bearer\s+|(?:token|key|secret|password)\s*[=:]\s*)[^\s\"',;]{8,}", r"\1<token>", text)
     return text
 
 

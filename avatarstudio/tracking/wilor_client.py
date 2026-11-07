@@ -49,7 +49,12 @@ def find_wilor():
     """(python.exe of the WiLoR environment, wilor_server.py) or (None, None)."""
     from avatarstudio.core.os_support import venv_python
     py = os.environ.get("AVATARSTUDIO_WILOR") or _find([venv_python(".venv_wilor")])
-    script = _find(["wilor_server.py"])
+    # the helper script only ever from the app itself (next to this file; the packaged app keeps it next to its
+    # exe): a wilor_server.py lying in the folder the exe was started from (Downloads...) would otherwise be run
+    places = [os.path.dirname(os.path.abspath(__file__))]
+    if getattr(sys, "frozen", False):
+        places.append(os.path.dirname(sys.executable))
+    script = next((p for p in (os.path.join(d, "wilor_server.py") for d in places) if os.path.exists(p)), None)
     return (py, script) if py and script else (None, None)
 
 
@@ -77,6 +82,14 @@ class WilorFingers:
         run_dir = os.path.join(tempfile.gettempdir(), "AvatarStudio-wilor")
         try:
             os.makedirs(run_dir, exist_ok=True)
+            # only our two files in there: Python imports from the script's folder first, so anything else left
+            # in it (a numpy.py, ...) would be run by the helper
+            for name in os.listdir(run_dir):
+                path = os.path.join(run_dir, name)
+                try:
+                    shutil.rmtree(path) if os.path.isdir(path) else os.remove(path)
+                except OSError:
+                    pass
             # perf.py goes along (the helper imports it): next to the script in the packaged app, in core/ here
             perf = os.path.join(os.path.dirname(script), "perf.py")
             if not os.path.exists(perf):
