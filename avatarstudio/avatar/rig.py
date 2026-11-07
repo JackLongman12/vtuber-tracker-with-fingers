@@ -688,10 +688,21 @@ class AvatarRig:
         """The avatar's own rest skeleton: {bone: offset from its parent in metres, rig axes}. Bones the avatar
         doesn't have keep the default. Used for contacts, no-clipping and the thumb's rest direction."""
         rest = {}
+        offsets = offsets if isinstance(offsets, dict) else {}
         for name, (parent, off) in REST.items():
-            o = offsets.get(name)
-            rest[name] = (parent, tuple(float(x) for x in o) if o is not None and np.linalg.norm(o) > 1e-4 else off)
+            rest[name] = (parent, self._bone_offset(offsets.get(name)) or off)
         self.rest = rest
+
+    @staticmethod
+    def _bone_offset(o):
+        """A bone offset from the viewer as 3 floats, or None if it isn't one a real avatar could have (it comes
+        over the WebSocket: a broken or hostile message must not put NaN / huge numbers into the rig)."""
+        try:
+            v = np.asarray(o, dtype=float).reshape(3)
+        except (TypeError, ValueError):
+            return None
+        n = float(np.linalg.norm(v))
+        return tuple(float(x) for x in v) if np.isfinite(n) and 1e-4 < n < 10.0 else None
 
     # -------- calibration: neutral head / torso / face, standing spot, personal vowels
     @property

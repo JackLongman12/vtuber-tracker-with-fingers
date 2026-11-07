@@ -15,6 +15,7 @@ import time
 import numpy as np
 
 PORT = 8766
+MAX_HANDS, MAX_SIDE = 8, 2048  # a request asking for more is broken (or not from the studio): the connection closes
 
 
 def watch_parent(pid):
@@ -116,11 +117,15 @@ def main():
         try:
             while True:
                 n, = struct.unpack("<I", recv_exact(conn, 4))
+                if n > MAX_HANDS:
+                    raise ConnectionError(f"{n} hands in one request")
                 t0 = time.perf_counter()
                 hands = []
                 for _ in range(n):
                     x0, y0, x1, y1, right = struct.unpack("<5f", recv_exact(conn, 20))
                     h, w = struct.unpack("<II", recv_exact(conn, 8))
+                    if not (0 < h <= MAX_SIDE and 0 < w <= MAX_SIDE):
+                        raise ConnectionError(f"a {w}x{h} patch")
                     patch = np.frombuffer(recv_exact(conn, h * w * 3), np.uint8).reshape(h, w, 3)
                     hands.append(((x0, y0, x1, y1), right, patch))
                 kps = [None] * n

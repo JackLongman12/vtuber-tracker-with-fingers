@@ -666,7 +666,7 @@ def main():
                 nonlocal_hand_cal_start()
             elif name == "reset_depth":
                 tracker.depth.reset()
-            elif name == "toggle_expression":
+            elif name == "toggle_expression" and m.get("arg") in set(hotkeys.values()):  # (the page's buttons)
                 toggle_expression(m.get("arg"))
         elif kind == "key" and window is not None:  # the app's buttons and keyboard: like keys in the studio window
             key = str(m.get("key", ""))[:1].lower()

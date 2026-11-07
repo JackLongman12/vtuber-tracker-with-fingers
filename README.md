@@ -668,7 +668,11 @@ camera picture. Programs that aren't browsers (the app itself, your own scripts)
 https://example.com the WebSocket is refused and the camera picture doesn't load; the viewer at
 http://127.0.0.1:8000 and http://localhost:8000 still connect and show it. Also: the viewer's and settings page's
 `?ws=` can only name a local address, *Open data folder* only opens folders inside your data folder, and updates
-download only from this project's own GitHub releases.
+download only from this project's own GitHub releases. Messages from pages are checked too: avatar bone lengths
+that aren't real numbers (or are absurdly long) are ignored, expressions can only be ones from `hotkeys.json`, and
+the WiLoR helper closes a connection that asks for more than 8 hands or patches over 2048 px.
+- **Only load gesture models you trained yourself:** `gestures/model.joblib` is a pickle, which runs code when it's
+  loaded. Don't copy in one someone else sent you (profiles, `settings.json` and `hotkeys.json` are plain data).
 
 ## VTube Studio (Live2D)
 1. In VTube Studio: Settings → turn on **Start API** (port 8001), and turn **off** its own webcam tracking.

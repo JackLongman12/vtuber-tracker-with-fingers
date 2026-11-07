@@ -33,7 +33,7 @@ def main():
     os.makedirs(out, exist_ok=True)
     with zipfile.ZipFile(tmp) as z:
         for name in z.namelist():
-            if name.endswith("/"):
+            if name.endswith("/") or os.path.basename(name) in ("", ".", ".."):
                 continue
             with z.open(name) as src, open(os.path.join(out, os.path.basename(name)), "wb") as dst:  # (no paths)
                 dst.write(src.read())
