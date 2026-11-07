@@ -675,6 +675,9 @@ http://127.0.0.1:8000 and http://localhost:8000 still connect and show it. Also:
 download only from this project's own GitHub releases. Messages from pages are checked too: avatar bone lengths
 that aren't real numbers (or are absurdly long) are ignored, expressions can only be ones from `hotkeys.json`, and
 the WiLoR helper closes a connection that asks for more than 8 hands or patches over 2048 px.
+- **The app windows show only their own pages.** What a page can ask of its window (uninstall, tools, updates)
+  would be there for any page it showed: a link or file dropped onto a window is now refused, and a window that
+  ends up on another page anyway goes straight back to its own (tested with https://example.com).
 - **Only load gesture models you trained yourself:** `gestures/model.joblib` is a pickle, which runs code when it's
   loaded. Don't copy in one someone else sent you (profiles, `settings.json` and `hotkeys.json` are plain data).
 

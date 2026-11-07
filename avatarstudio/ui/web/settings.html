@@ -173,6 +173,9 @@
   </div>
 </main>
 <script>
+// a link or file dropped onto the window would open in it: this page takes no drops
+addEventListener('dragover', (e) => e.preventDefault());
+addEventListener('drop', (e) => e.preventDefault());
 // ?ws= picks another port (--ws-port); only this PC's addresses, so a link can't point the page at someone's server
 const LOCAL_WS = /^ws:\/\/(127\.0\.0\.1|localhost|\[::1\])(:\d{1,5})?\/?$/i;
 const wsParam = new URLSearchParams(location.search).get('ws');

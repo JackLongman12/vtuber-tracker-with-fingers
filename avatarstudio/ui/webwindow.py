@@ -373,9 +373,23 @@ def main(name, func=None, api=None, fallback=None):
             pass
     if not WINDOWS and "x" in bounds and not on_a_screen(bounds):  # (a monitor that's gone: pywebview centres it)
         del bounds["x"], bounds["y"]
-    url = serve(web_dir()) + "/" + page
+    origin = serve(web_dir())
+    url = origin + "/" + page
+    webview.settings["ALLOW_FILE_URLS"] = False  # (a dropped file must not open in the window)
     window = webview.create_window(title, url, js_api=api or Api(), min_size=MIN_SIZE.get(name, (480, 360)),
                                    background_color="#111418", maximized=bool(saved.get("maximized")), **bounds)
+
+    def stay_home(*_):
+        """The window shows only its own pages: what its page can call (window.pywebview.api: uninstall, tools,
+        updates) would be there for any page it showed, e.g. a link dropped onto it."""
+        try:
+            now = window.get_current_url() or ""
+        except Exception:
+            return
+        if now != origin and not now.startswith(origin + "/"):
+            print(f"blocked a page that isn't Avatar Studio's own in the {name} window", flush=True)
+            window.load_url(url)
+    window.events.loaded += stay_home
     if hasattr(api, "attach"):
         api.attach(window)
     if WINDOWS:

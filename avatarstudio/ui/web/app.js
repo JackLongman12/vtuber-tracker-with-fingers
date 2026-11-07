@@ -6,6 +6,10 @@
 //    page (index.html?embed) in a frame.
 'use strict';
 const $ = (s, el = document) => el.querySelector(s);
+// a link or file dropped onto the window would open in it (and get its controls): nothing here takes drops
+// (the 3D avatar pane has its own VRM drop)
+addEventListener('dragover', (e) => e.preventDefault());
+addEventListener('drop', (e) => e.preventDefault());
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const WS_URL = 'ws://127.0.0.1:8765', CAMERA_URL = 'http://127.0.0.1:8000/camera.mjpg';
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
