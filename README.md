@@ -678,8 +678,11 @@ the WiLoR helper closes a connection that asks for more than 8 hands or patches 
 - **The app windows show only their own pages.** What a page can ask of its window (uninstall, tools, updates)
   would be there for any page it showed: a link or file dropped onto a window is now refused, and a window that
   ends up on another page anyway goes straight back to its own (tested with https://example.com).
-- **Only load gesture models you trained yourself:** `gestures/model.joblib` is a pickle, which runs code when it's
-  loaded. Don't copy in one someone else sent you (profiles, `settings.json` and `hotkeys.json` are plain data).
+- **Gesture models are plain numbers now.** `gestures/model.joblib` was a pickle, which runs code when it's loaded,
+  so a gesture model someone sent you could have taken over your PC. Training now saves `gestures/model.npz` (the
+  network's weights only, read with pickles switched off) and the studio runs the network itself in NumPy (same
+  probabilities as scikit-learn to 1e-8). An old `model.joblib` is never loaded: press *Train* once again, the
+  recordings are kept. Every file the app reads is now data only (JSON, NumPy arrays, ONNX models).
 
 ## VTube Studio (Live2D)
 1. In VTube Studio: Settings → turn on **Start API** (port 8001), and turn **off** its own webcam tracking.

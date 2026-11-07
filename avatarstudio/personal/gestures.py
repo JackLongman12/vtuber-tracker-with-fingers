@@ -16,13 +16,16 @@ import time
 from collections import Counter, deque
 
 import cv2
-import joblib
 import numpy as np
 from avatarstudio.core.paths import user_file
 
 DIR = user_file("gestures")
 DATA = os.path.join(DIR, "data")
-MODEL = os.path.join(DIR, "model.joblib")
+# the trained model as plain numbers (scaler + network weights), never a pickle: a pickle runs code when it's
+# loaded, so a "gesture pack" someone sent could take over the PC. (model.joblib from older versions is ignored:
+# train again; the recordings in data/ are kept)
+MODEL = os.path.join(DIR, "model.npz")
+OLD_MODEL = os.path.join(DIR, "model.joblib")
 ACTIONS = os.path.join(DIR, "actions.json")
 DEFAULT_ACTIONS = {
     "_help": "gesture name -> VRM expression clip (Joy, Angry, Sorrow, Fun, Surprised, or any clip on your model) "
@@ -144,11 +147,53 @@ def train():
     for n, row in zip(names, cm):
         print(f"{n:>{w}}: " + " ".join(f"{v:6d}" for v in row))
     model = make().fit(augment(x), np.tile(y, 11))
-    joblib.dump({"model": model, "names": names}, MODEL)
+    save_model(model, names)
     if not os.path.exists(ACTIONS):
         with open(ACTIONS, "w") as f:
             json.dump(DEFAULT_ACTIONS, f, indent=2)
     print(f"saved -> {MODEL}")
+
+
+def save_model(model, names):
+    """The trained pipeline (StandardScaler + MLPClassifier) as plain arrays in MODEL."""
+    scaler, mlp = model[0], model[-1]
+    arrays = {"mean": scaler.mean_, "scale": scaler.scale_, "names": np.array(names, dtype=str),
+              "activation": np.array(mlp.activation), "out": np.array(mlp.out_activation_),
+              "layers": np.array(len(mlp.coefs_))}
+    for i, (w, b) in enumerate(zip(mlp.coefs_, mlp.intercepts_)):
+        arrays[f"w{i}"], arrays[f"b{i}"] = w, b
+    os.makedirs(DIR, exist_ok=True)
+    tmp = MODEL + ".tmp.npz"
+    np.savez(tmp, **arrays)
+    os.replace(tmp, MODEL)
+
+
+class GestureModel:
+    """predict_proba of the saved network, in NumPy (loaded with allow_pickle=False: data only)."""
+    ACT = {"relu": lambda z: np.maximum(z, 0), "tanh": np.tanh, "identity": lambda z: z,
+           "logistic": lambda z: 1 / (1 + np.exp(-z))}
+
+    def __init__(self, path):
+        with np.load(path, allow_pickle=False) as d:
+            self.mean, self.scale = d["mean"].astype(np.float64), d["scale"].astype(np.float64)
+            self.names = [str(n) for n in d["names"]]
+            self.act, self.out = self.ACT[str(d["activation"])], str(d["out"])
+            self.layers = [(d[f"w{i}"].astype(np.float64), d[f"b{i}"].astype(np.float64))
+                           for i in range(int(d["layers"]))]
+        if self.out not in ("softmax", "logistic") or self.mean.shape != (63,):
+            raise ValueError("not a gesture model")
+
+    def predict_proba(self, x):
+        z = (np.asarray(x, np.float64) - self.mean) / self.scale
+        for i, (w, b) in enumerate(self.layers):
+            z = z @ w + b
+            if i < len(self.layers) - 1:
+                z = self.act(z)
+        if self.out == "logistic":  # (two gestures: one output)
+            p = 1 / (1 + np.exp(-z[:, :1]))
+            return np.hstack([1 - p, p])
+        z = np.exp(z - z.max(axis=1, keepdims=True))
+        return z / z.sum(axis=1, keepdims=True)
 
 
 class GestureRecognizer:
@@ -156,10 +201,13 @@ class GestureRecognizer:
 
     def __init__(self, threshold=0.7, window=7):
         self.ok = os.path.exists(MODEL)
+        if not self.ok and os.path.exists(OLD_MODEL):
+            print("your gestures were trained with an older version: press Train again (Personalize -> gestures) "
+                  "to use them; the recordings are kept", flush=True)
         if self.ok:
             try:
-                d = joblib.load(MODEL)
-                self.model, self.names = d["model"], d["names"]
+                self.model = GestureModel(MODEL)
+                self.names = self.model.names
             except Exception as e:  # a damaged / incompatible model file: built-in gestures instead of a crash
                 print(f"gesture model unreadable ({e}); using the built-in gestures - retrain with gestures.py train")
                 self.ok = False
