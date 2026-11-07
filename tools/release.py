@@ -14,12 +14,17 @@ goes on the default branch's newest commit), and have a token: GITHUB_TOKEN=... 
 Steps: VERSION in avatarstudio/version.py is set to the new version, Distributions/AvatarStudio.exe is built
 (tools/build_dist.py), SHA256SUMS.txt is written next to it, then the release v<version> is created and both files
 are uploaded (the app checks the download against SHA256SUMS.txt). Commit and push the changed version.py too.
+Small updates: a patch from the latest release before this one (AvatarStudio-from-<that version>.avspatch,
+avatarstudio/core/delta.py) is made and uploaded too, with its line in SHA256SUMS.txt; apps on that version
+download it instead of the whole exe. That release's exe is kept in build_tmp/release_base (taken from
+Distributions before the build when it's the same file, else downloaded once).
 """
 import argparse
 import hashlib
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import urllib.error
@@ -28,6 +33,9 @@ import urllib.request
 import zipfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ROOT)
+from avatarstudio.core import delta  # noqa: E402
+BASE_DIR = os.path.join(ROOT, "build_tmp", "release_base")
 VERSION_FILE = os.path.join(ROOT, "avatarstudio", "version.py")
 APP = os.path.join(ROOT, "Distributions", "AvatarStudio.exe")
 API = "https://api.github.com"
@@ -52,6 +60,11 @@ def get_token():
         return subprocess.run(["gh", "auth", "token"], capture_output=True, text=True, check=True).stdout.strip()
     except (OSError, subprocess.CalledProcessError):
         raise SystemExit("no GitHub token: set GITHUB_TOKEN, or log in with the GitHub CLI (gh auth login)")
+
+
+def delta_name(version):
+    from avatarstudio.core.updater import PATCH
+    return PATCH.format(version)
 
 
 def sha256(path):
@@ -90,6 +103,47 @@ def upload(release, path, name, token):
             r.read()
 
 
+def _get(url, token):
+    headers = {"Accept": "application/vnd.github+json", "User-Agent": "AvatarStudio-release",
+               **({"Authorization": f"Bearer {token}"} if token else {})}
+    return urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=600)
+
+
+def previous_base(args, repo, token):
+    """The latest release before this one, for the patch: (version, its exe here) or None. Called before the build,
+    which replaces Distributions/AvatarStudio.exe."""
+    if args.prerelease or not repo:
+        return None
+    try:
+        with _get(f"{args.api}/repos/{repo}/releases/latest", token) as r:
+            rel = json.load(r)
+        assets = {a["name"]: a for a in rel.get("assets", [])}
+        version = rel["tag_name"].lstrip("vV")
+        with _get(assets["SHA256SUMS.txt"]["browser_download_url"], None) as r:
+            sums = r.read().decode("utf-8", "replace")
+        want = next(l.split()[0].lower() for l in sums.splitlines() if l.split()[-1:] == ["AvatarStudio.exe"])
+        base = os.path.join(BASE_DIR, f"AvatarStudio-{version}.exe")
+        os.makedirs(BASE_DIR, exist_ok=True)
+        if os.path.exists(base) and sha256(base) == want:
+            return version, base
+        app = args.exe or APP
+        if os.path.exists(app) and sha256(app) == want:
+            shutil.copyfile(app, base)
+        else:
+            print(f"downloading v{version}'s app for the patch (once)...", flush=True)
+            with _get(assets["AvatarStudio.exe"]["browser_download_url"], None) as r, open(base, "wb") as f:
+                shutil.copyfileobj(r, f, 1 << 20)
+        if sha256(base) != want:
+            raise ValueError("it doesn't match its checksum")
+        for old in os.listdir(BASE_DIR):  # (only the newest one is needed)
+            if old != os.path.basename(base):
+                os.remove(os.path.join(BASE_DIR, old))
+        return version, base
+    except Exception as e:
+        print(f"no patch for small updates this time: couldn't get the previous release ({e})", flush=True)
+        return None
+
+
 def release_app(args, repo, token):
     version = args.version
     if not re.fullmatch(r"\d+\.\d+\.\d+", version or ""):
@@ -98,14 +152,24 @@ def release_app(args, repo, token):
     if tuple(map(int, version.split("."))) <= tuple(map(int, current.split("."))) and not args.skip_build:
         raise SystemExit(f"{version} isn't newer than this code's {current}: installed apps wouldn't update to it")
     notes = open(args.notes_file, encoding="utf-8").read() if args.notes_file else (args.notes or "")
+    prev = previous_base(args, repo, token)
     if not args.skip_build:
         set_version(version)
         print(f"version {current} -> {version}; building (a few minutes)...", flush=True)
         subprocess.run([sys.executable, os.path.join(ROOT, "tools", "build_dist.py")], check=True)
     app = args.exe or APP
     sums = os.path.join(os.path.dirname(app), "SHA256SUMS.txt")
+    patch = None
+    if prev:
+        patch = os.path.join(BASE_DIR, delta_name(prev[0]))
+        size, _ = delta.make(prev[1], app, patch)
+        print(f"patch from v{prev[0]}: {size / 2 ** 20:.0f} MB", flush=True)
+        if size > 0.6 * os.path.getsize(app):  # (hardly smaller: not worth a second way to update)
+            patch = None
     with open(sums, "w", newline="\n") as f:
         f.write(f"{sha256(app)}  AvatarStudio.exe\n")
+        if patch:
+            f.write(f"{sha256(patch)}  {os.path.basename(patch)}\n")
     print(f"{app}: {os.path.getsize(app) / 2 ** 20:.0f} MB, checksum in {sums}")
     if args.dry_run:
         print("dry run: nothing uploaded")
@@ -119,6 +183,8 @@ def release_app(args, repo, token):
     rel = call("POST", f"{args.api}/repos/{repo}/releases", token, body)
     upload(rel, app, "AvatarStudio.exe", token)
     upload(rel, sums, "SHA256SUMS.txt", token)
+    if patch:
+        upload(rel, patch, os.path.basename(patch), token)
     print(f"released: {rel.get('html_url')}\n" + ("A pre-release: installed apps don't offer it (they only take the "
                                                     "latest full release); people download it themselves."
                                                     if args.prerelease else "Installed apps offer it on their next start."))

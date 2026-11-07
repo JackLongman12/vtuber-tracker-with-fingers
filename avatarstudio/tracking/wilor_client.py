@@ -48,7 +48,9 @@ def _find(rel_paths):
 def find_wilor():
     """(python.exe of the WiLoR environment, wilor_server.py) or (None, None)."""
     from avatarstudio.core.os_support import venv_python
-    py = os.environ.get("AVATARSTUDIO_WILOR") or _find([venv_python(".venv_wilor")])
+    from avatarstudio.tracking.wilor_setup import installed_python
+    # (your own setup next to the project first, then the one Settings > WiLoR finger helper installed)
+    py = os.environ.get("AVATARSTUDIO_WILOR") or _find([venv_python(".venv_wilor")]) or installed_python()
     # the helper script only ever from the app itself (next to this file; the packaged app keeps it next to its
     # exe): a wilor_server.py lying in the folder the exe was started from (Downloads...) would otherwise be run
     places = [os.path.dirname(os.path.abspath(__file__))]

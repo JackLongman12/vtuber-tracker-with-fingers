@@ -39,6 +39,14 @@ the app never updates to one by itself, and the Download link above stays on the
 - **Crash notice:** when tracking, a tool or the WiLoR finger helper stops by itself (or a part of tracking fails and
   it carries on), the app says what stopped, with its last message and a **Report this problem** button that opens
   the bug report already filled in with it.
+- **Smaller updates:** each release also has a patch from the release before it (about 35 MB instead of ~490 MB).
+  The app rebuilds the new version from the one you have and checks it against the same checksum as the full
+  download; if anything doesn't fit, it downloads the whole app as before.
+- **WiLoR finger helper in one click** (Settings → WiLoR finger helper): installs its own Python, PyTorch and
+  WiLoR-mini into `%LOCALAPPDATA%\AvatarStudio\wilor`, with progress. You accept the licences there and pick the MANO
+  hand model you downloaded from its makers (their licence needs you to register).
+- **Exit codes:** a tool that fails (`AvatarStudio.exe mocap missing.mp4`, a wrong option) now ends with an error code
+  instead of 0, so scripts and the app's crash notice see it.
 - **Phantom hands dropped:** turned away from the camera, the hand model could "find" a hand in your hair. The avatar
   froze its head as if a hand covered your face and reached its arm up there. A hand further than 3.5 body sizes
   from both of the body model's wrists is now ignored (real hands on the test takes: at most 2.7).
@@ -103,7 +111,12 @@ releases of the repository in `avatarstudio/version.py`; publishing one is `tool
 Python needed, no .bat files, no folders). The app (runtime, models, 3D viewer) is zipped onto the end of a small
 launcher (`packaging/single_exe.cs`, compiled with the C# compiler that comes with Windows). The first start of a
 version unpacks it once (progress window) into `%LOCALAPPDATA%\AvatarStudio\app\<version>`; every later
-start goes straight there. Unpacking runs on up to 6 cores at once (each thread with its own reader of the zip), and the
+start goes straight there. Updates: `tools/release.py` also uploads `AvatarStudio-from-<previous version>.avspatch`
+(`avatarstudio/core/delta.py`): the new exe as "copy these bytes from the previous exe" for every file whose compressed
+bytes are the same (checked byte for byte) and the bytes themselves for the rest. 1.1.3 → 1.2.0: 35 MB instead of
+487 MB, made in 1 s, applied in 1.3 s. The updater applies it to the running exe and checks the result against the
+full exe's line in SHA256SUMS.txt; another version, a changed exe or a bad patch falls back to the full download.
+Unpacking runs on up to 6 cores at once (each thread with its own reader of the zip), and the
 progress window stays until the app's own window is up. On this laptop, a first start from a fresh copy: unpacked in
 3.0–3.5 s instead of 7.1–7.6 s, app window at 4.5–4.9 s instead of 8.6–9.0 s, and no moment with no window on screen
 (it was 2 s before). Before the progress window shows, Windows checks a newly downloaded 500 MB file once (2–5 s here);
@@ -447,7 +460,19 @@ hand-frames use them, studio at full speed. Speed-ups: the helper opts out of Wi
 prepares both hands with OpenCV in one batch instead of WiLoR-mini's per-hand full-image blur (same points: median
 difference 0.6 mm); 168 → 71 ms.
 
-Setup. WiLoR fingers are optional and nothing of them comes with Avatar Studio: you install them yourself and accept
+**Setup from the app (Windows):** Settings → *WiLoR finger helper* → tick the licence box → *Install…* and pick your
+`MANO_RIGHT.pkl` (see below for where it comes from). `avatarstudio/tracking/wilor_setup.py` (also
+`AvatarStudio.exe wilor-setup --mano MANO_RIGHT.pkl`) then puts everything into `%LOCALAPPDATA%\AvatarStudio\wilor`:
+python.org's embeddable Python 3.11.9 and pip 24.2 (both checked against pinned SHA-256s), PyTorch 2.5.1 (the CUDA
+build with an NVIDIA GPU, else the CPU build), WiLoR-mini at a pinned commit (checked) with the same two fixes as the
+manual setup below, your MANO file rewritten without chumpy (only numpy / scipy data is read from it: anything else in
+the pickle is refused, not run), then a first start of WiLoR that downloads its weights. About 4 GB; a finished step
+is skipped when it's run again (*Repair…*). The studio uses it from the next start of tracking; your own
+`.venv_wilor` next to the project wins if there is one. Uninstall removes it with the rest of `%LOCALAPPDATA%\AvatarStudio`.
+(Development runs on the Microsoft Store's Python see a private copy of `%LOCALAPPDATA%`; set `AVATARSTUDIO_WILOR_DIR`
+to another folder there.)
+
+Manual setup. WiLoR fingers are optional and nothing of them comes with Avatar Studio: you install them yourself and accept
 their licences yourself. WiLoR's weights are non-commercial (CC BY-NC-ND 4.0), the MANO hand model is licensed for
 non-commercial research, education and artistic projects only, and the hand detector (ultralytics) is AGPL-3.0
 ([THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)).

@@ -237,6 +237,16 @@ class AppApi:
             if not os.path.exists(user_file("take.mp4")):
                 return {"ok": False, "error": "Record a take first"}
             args = ["tune-smoothing", user_file("take.mp4")]
+        elif tool == "wilor-setup":  # (Settings > WiLoR finger helper; the page asked for the licences first)
+            from avatarstudio.tracking import wilor_setup
+            args = ["wilor-setup"]
+            if not wilor_setup.state()["mano"]:
+                import webview
+                picked = self._window.create_file_dialog(
+                    webview.FileDialog.OPEN, file_types=("MANO hand model (MANO_RIGHT.pkl)", "All files (*.*)"))
+                if not picked:
+                    return {"ok": False, "cancelled": True}
+                args += ["--mano", picked[0]]
         elif tool == "mocap":
             path = self._pick_video()
             if not path:
@@ -335,6 +345,14 @@ class AppApi:
         self._save_prefs()
         return {"ok": True, "name": self._prefs["obs_avatar"]}
 
+    def wilor_state(self):
+        """Settings > WiLoR finger helper: installed (by the setup, or your own .venv_wilor), MANO in place."""
+        from avatarstudio.tracking import wilor_client, wilor_setup
+        s = wilor_setup.state()
+        s["usable"] = wilor_client.find_wilor()[0] is not None
+        s["windows"] = sys.platform == "win32"
+        return s
+
     def open_mocap_results(self):
         from avatarstudio.core.os_support import open_folder
         last = self._prefs.get("mocap_video")
@@ -432,8 +450,8 @@ class AppApi:
             self._update = {"state": "downloading", "info": info, "progress": done / total if total else 0,
                             "done_mb": round(done / 2 ** 20), "total_mb": round(total / 2 ** 20)}
         try:
-            progress(0, info.get("size", 0))
-            path = updater.download(info, os.path.dirname(app), progress)
+            progress(0, info.get("patch_size") or info.get("size", 0))
+            path = updater.download(info, os.path.dirname(app), progress, base=app)
             self._update = {"state": "installing", "info": info}
             self.stop()
             for j in self._jobs.values():

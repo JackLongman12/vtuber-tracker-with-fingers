@@ -9,6 +9,7 @@
   AvatarStudio.exe gestures record NAME      custom gestures (record / train / list / delete)
   AvatarStudio.exe mocap take.mp4            offline motion capture from a video (BVH, CSV, joint angles)
   AvatarStudio.exe uninstall [--delete-data] remove the app from this PC (your data is kept unless asked)
+  AvatarStudio.exe wilor-setup --mano PKL    install the WiLoR finger helper (tracking/wilor_setup.py)
   AvatarStudio.exe --test-pattern ...        any other options go to the studio (older launchers)
 """
 import importlib
@@ -17,7 +18,8 @@ import sys
 
 TOOLS = {"train-face": "avatarstudio.personal.face_refiner", "tune-smoothing": "avatarstudio.personal.tune_smoothing",
          "gestures": "avatarstudio.personal.gestures", "studio": "avatarstudio.engine.studio",
-         "mocap": "avatarstudio.mocap", "uninstall": "avatarstudio.core.uninstall"}
+         "mocap": "avatarstudio.mocap", "uninstall": "avatarstudio.core.uninstall",
+         "wilor-setup": "avatarstudio.tracking.wilor_setup"}
 
 
 def main():
@@ -52,20 +54,30 @@ def main():
         return
     name, rest = (TOOLS[args[0]], args[1:]) if args[0] in TOOLS else (TOOLS["studio"], args)
     sys.argv = [sys.argv[0]] + rest
+    code = 0  # (what the tool ended with: scripts and the app see a failed tool as failed, not as exit code 0)
     try:
         importlib.import_module(name).main()
     except SystemExit as e:
         if e.code not in (None, 0):
-            print(e.code)
+            if isinstance(e.code, int):
+                code = e.code
+            else:  # a message (SystemExit("No video at ...")): show it, exit code 1
+                print(e.code)
+                code = 1
+    except KeyboardInterrupt:
+        code = 130
     except Exception:
         import traceback
         traceback.print_exc()
+        code = 1
     finally:
         if os.environ.get("AVATAR_PAUSE"):  # started from the launcher: keep the window open to read the results
             try:
                 input("\nPress Enter to close this window")
             except EOFError:
                 pass
+    if code:
+        sys.exit(code)
 
 
 if __name__ == "__main__":

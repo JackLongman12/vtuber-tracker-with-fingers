@@ -119,7 +119,8 @@ function toast(text, kind = '') {
 // something stopped by itself: what stopped, its last message, and a bug report already filled in with it
 const MODE_NAMES = { live: 'Tracking', latency: 'The latency test', test_pattern: 'The avatar test',
   train_face: 'Face training', gesture: 'Gesture recording' };
-const TOOL_NAMES = { 'train-gestures': 'Gesture training', 'tune-smoothing': 'Smoothing tuning', mocap: 'Motion capture' };
+const TOOL_NAMES = { 'train-gestures': 'Gesture training', 'tune-smoothing': 'Smoothing tuning', mocap: 'Motion capture',
+  'wilor-setup': 'The WiLoR setup' };
 function crashNotice(what, lines = [], after = '', verb = 'stopped unexpectedly') {
   const last = [...lines].reverse().find((l) => l.trim()) || '';
   const t = document.createElement('div');
@@ -202,6 +203,7 @@ function applyState(s) {
   for (const [name, j] of Object.entries(s.jobs)) {
     showLog(JOB_LOGS[name] || name, j);
     showProgress(name, j);
+    if (name === 'wilor-setup' && app.wilorSeen !== `${j.id}${j.running}`) { app.wilorSeen = `${j.id}${j.running}`; fillWilor(); }
     for (const line of newLines(j)) if (/saved|written|done|->/i.test(line) && !j.running) toast(friendly(line), 'ok');
     app.toldJobs = app.toldJobs || {};
     if (!j.running && j.code && !j.stopped && app.toldJobs[name] !== j.id) {
@@ -239,6 +241,9 @@ function showProgress(name, j) {
     else if (/drawing overlay/.test(all)) { pct = 0.92; text = 'Drawing the overlay video…'; }
     else if (/cleaning up/.test(all)) { pct = 0.85; text = 'Filtering the whole take…'; }
     else if (m) { pct = 0.8 * (+m[1]) / Math.max(+m[2], 1); text = `Tracking: ${m[1]} of ${m[2]} frames`; }
+  } else if (name === 'wilor-setup') {
+    const m = [...all.matchAll(/step (\d+)\/(\d+): ([^\n]*)/g)].pop();
+    if (m) { pct = (+m[1] - 1) / +m[2]; text = `Step ${m[1]} of ${m[2]}: ${m[3]}`; }
   } else if (name === 'tune-smoothing') {
     if (/saved ->|already as good/.test(all)) pct = 1;
     else if (/tracked \d+ frames/.test(all)) { pct = 0.7; text = 'Comparing smoothing settings…'; }
@@ -248,6 +253,7 @@ function showProgress(name, j) {
     pct = j.code ? 0 : 1;
     text = j.code ? 'Ended with an error (see below)'
       : name === 'mocap' ? 'Done: BVH, CSV, face curves and the overlay video are in the results folder'
+      : name === 'wilor-setup' ? 'Done: WiLoR is used from the next start of tracking'
         : /already as good/.test(all) ? 'Done: the defaults already suit your take' : 'Done: smoothing tuned to you';
   }
   el.classList.remove('hidden');
@@ -527,6 +533,13 @@ function buildSettings() {
     <div class="row"><div class="label">Start tracking when the app opens</div><div class="ctl"><label class="switch"><input type="checkbox" data-pref="autostart"><span></span></label></div></div>
     <div class="row ${app.tray ? '' : 'hidden'}" id="row-tray"><div class="label">Minimize to the tray<small>An icon by the clock; its menu starts and stops tracking</small></div><div class="ctl"><label class="switch"><input type="checkbox" data-pref="tray"><span></span></label></div></div>
   </div>
+  <div class="card"><h2>WiLoR finger helper</h2><p class="muted small" style="margin:4px 0 8px">A 3D hand model on your GPU for better finger shapes (fists, fingers hiding each other). Optional: about 4 GB, installed into its own folder.</p>
+    <div class="row"><div class="label">Status<small id="wilor-status">–</small></div><div class="ctl"><button class="btn" id="btn-wilor-setup">Install…</button></div></div>
+    <label class="small" style="display:flex;gap:8px;align-items:flex-start;margin:6px 0"><input type="checkbox" id="wilor-licence">
+      <span>I accept the licences: WiLoR's weights are non-commercial only (CC BY-NC-ND 4.0); the MANO hand model is for non-commercial research, education and artistic projects; the hand detector (ultralytics) is AGPL-3.0. MANO comes from its makers: register at mano.is.tue.mpg.de, download <i>Models &amp; Code</i>, and pick <code>mano_v1_2/models/MANO_RIGHT.pkl</code> when asked.</span></label>
+    <div class="progress hidden" data-progress="wilor-setup"><div class="bar"><span></span></div><span class="ptext"></span></div>
+    <div class="log hidden" data-log="wilor-setup"></div>
+  </div>
   <div class="card"><h2>OBS</h2><p class="muted small" style="margin:4px 0 8px">Your avatar in OBS without a VTuber app: add a <b>Browser</b> source with this address (while tracking runs; press Refresh in the source after starting tracking).</p>
     <div class="row"><div class="label">Avatar<small id="obs-avatar-name">none picked: a skeleton shows</small></div><div class="ctl"><button class="btn" id="btn-obs-avatar">Choose .vrm…</button></div></div>
     <div class="row"><div class="label">Background</div><div class="ctl"><select class="plain" id="sel-obs-bg"><option value="">Transparent</option><option value="00ff00">Green (colour key)</option><option value="0000ff">Blue (colour key)</option></select></div></div>
@@ -598,7 +611,23 @@ function buildSettings() {
     else if (!r.cancelled) toast(r.error, 'bad');
   };
   fillObs();
+  $('#btn-wilor-setup').onclick = async () => {
+    if (!$('#wilor-licence').checked) { toast('Tick the licence box first'); return; }
+    const r = await call('run_tool', 'wilor-setup');
+    if (!r.ok && !r.cancelled) toast(r.error, 'bad');
+  };
+  fillWilor();
   $('#btn-report').onclick = () => openReport($('#report-desc').value);
+}
+
+async function fillWilor() {  // Settings > WiLoR finger helper
+  if (!$('#wilor-status')) return;
+  const s = await call('wilor_state'), job = app.jobs && app.jobs['wilor-setup'];
+  const busy = !!(job && job.running);
+  $('#wilor-status').textContent = busy ? 'Installing…' : s.usable ? (s.installed ? `Installed in ${s.folder}` : 'Installed (your own .venv_wilor)')
+    : s.windows ? 'Not installed: fingers come from MediaPipe' : 'Not installed (the automatic setup is for Windows; see the README)';
+  $('#btn-wilor-setup').textContent = s.usable ? 'Repair…' : 'Install…';
+  $('#btn-wilor-setup').disabled = busy || !s.windows;
 }
 
 function fillObs() {  // Settings > OBS: the browser-source address for the chosen look
@@ -752,6 +781,7 @@ async function loadSettings() {
     app.settings = r.settings; app.profiles = r.profiles; app.hotkeys = r.hotkeys;
   }
   fillSettings();
+  fillWilor();
 }
 function fillSettings() {
   const s = app.settings || {};
@@ -817,14 +847,14 @@ function renderUpdate() {
   const dlg = $('#update-dialog');
   if (!dlg.classList.contains('hidden')) {
     $('#update-title').textContent = `Avatar Studio ${info.version || ''} is available`;
-    $('#update-sub').textContent = `You have version ${app.version}. Updating downloads about ${Math.round((info.size || 0) / 2 ** 20)} MB, `
+    $('#update-sub').textContent = `You have version ${app.version}. Updating downloads about ${Math.round((info.patch_size || info.size || 0) / 2 ** 20)} MB, `
       + 'stops tracking and restarts the app; the new version prepares itself once on its first start.';
     $('#update-notes').textContent = info.notes || '';
     const p = $('#update-progress');
     p.classList.toggle('hidden', !busy);
     $('.bar span', p).style.width = `${Math.round((u.state === 'installing' ? 1 : u.progress || 0) * 100)}%`;
     $('.ptext', p).textContent = u.state === 'installing' ? 'Restarting with the new version…'
-      : `Downloading ${u.done_mb || 0} of ${u.total_mb || Math.round((info.size || 0) / 2 ** 20)} MB`;
+      : `Downloading ${u.done_mb || 0} of ${u.total_mb || Math.round((info.patch_size || info.size || 0) / 2 ** 20)} MB`;
     $('#update-error').textContent = u.error || '';
     $('#update-error').classList.toggle('hidden', !u.error);
     $('#btn-update-now').disabled = busy;
