@@ -35,7 +35,7 @@ import zipfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 from avatarstudio.core import delta  # noqa: E402
-BASE_DIR = os.path.join(ROOT, "build_tmp", "release_base")
+BASE_DIR = os.path.join(ROOT, "release_base")  # (not in build_tmp: the build empties that)
 VERSION_FILE = os.path.join(ROOT, "avatarstudio", "version.py")
 APP = os.path.join(ROOT, "Distributions", "AvatarStudio.exe")
 API = "https://api.github.com"

@@ -8,6 +8,7 @@ __pycache__/
 
 # build output (tools/build_dist.py, tools/release.py)
 build_tmp/
+release_base/
 Distributions/
 *.spec
 
