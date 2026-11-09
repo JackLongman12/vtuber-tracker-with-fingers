@@ -1,7 +1,7 @@
 """Finger shapes from WiLoR (CVPR 2025 3D hand reconstruction) instead of MediaPipe's finger points.
 
 WiLoR needs PyTorch, so it runs as a helper process (wilor_server.py) in its own environment, .venv_wilor (see
-README "WiLoR fingers"); the studio and the packaged builds stay PyTorch-free. Every frame the studio hands it
+docs/TECHNICAL.md "WiLoR fingers"); the studio and the packaged builds stay PyTorch-free. Every frame the studio hands it
 small patches around the hands MediaPipe found; WiLoR answers in ~40 ms on an RTX 4060 laptop, so results come
 in for every 2nd-3rd frame and the newest one is used. Only the finger shapes come from WiLoR - the wrist and
 hand orientation stay with MediaPipe's newest frame, so WiLoR's delay only affects the fingers. If the helper

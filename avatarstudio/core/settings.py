@@ -55,7 +55,7 @@ class Settings:
         data = load_json(path, {})
         if not isinstance(data, dict):
             data = {}
-        if data and data.get("version", 1) < 2:  # defaults changed after measuring jitter (see README "Less jitter")
+        if data and data.get("version", 1) < 2:  # defaults changed after measuring jitter (see docs/TECHNICAL.md "Less jitter")
             data.update(predict_ms=0.0, version=2)
         s.update(data)
         return s

@@ -1,5 +1,5 @@
 """Installs the WiLoR finger helper for you (Settings > WiLoR finger helper in the app, or
-`AvatarStudio.exe wilor-setup --mano MANO_RIGHT.pkl`), instead of the manual setup in the README.
+`AvatarStudio.exe wilor-setup --mano MANO_RIGHT.pkl`), instead of the manual setup in docs/TECHNICAL.md.
 
 Everything goes into one folder, %LOCALAPPDATA%\\AvatarStudio\\wilor (AVATARSTUDIO_WILOR_DIR overrides it):
   1. Python 3.11 (python.org's embeddable package, checked against its SHA-256) and pip (a pinned wheel, checked)
@@ -169,7 +169,7 @@ def install_mano(src, d):
 # ---------------------------------------------------------------- the steps
 def setup(mano=None):
     if sys.platform != "win32":
-        raise SystemExit("The automatic setup is for Windows; elsewhere follow the README's WiLoR setup")
+        raise SystemExit("The automatic setup is for Windows; elsewhere follow the manual WiLoR setup in docs/TECHNICAL.md")
     d = wilor_dir()
     os.makedirs(d, exist_ok=True)
     py_dir, py = os.path.join(d, "python"), os.path.join(d, "python", "python.exe")

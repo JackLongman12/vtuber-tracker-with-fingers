@@ -18,4 +18,4 @@ pyinstaller; sys_platform == "win32"   # build_dist.py (the one-file app, Window
 # mediapipe pulls in opencv-contrib-python 5.x; keep exactly one OpenCV package, on 4.x:
 #   pip uninstall -y opencv-python opencv-contrib-python && pip install "opencv-contrib-python<5"
 opencv-contrib-python<5
-# The WiLoR finger helper has its own environment (.venv_wilor, PyTorch): see README "WiLoR fingers".
+# The WiLoR finger helper has its own environment (.venv_wilor, PyTorch): see docs/TECHNICAL.md "WiLoR fingers".

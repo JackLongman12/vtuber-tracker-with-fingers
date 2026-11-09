@@ -625,7 +625,7 @@ async function fillWilor() {  // Settings > WiLoR finger helper
   const s = await call('wilor_state'), job = app.jobs && app.jobs['wilor-setup'];
   const busy = !!(job && job.running);
   $('#wilor-status').textContent = busy ? 'Installing…' : s.usable ? (s.installed ? `Installed in ${s.folder}` : 'Installed (your own .venv_wilor)')
-    : s.windows ? 'Not installed: fingers come from MediaPipe' : 'Not installed (the automatic setup is for Windows; see the README)';
+    : s.windows ? 'Not installed: fingers come from MediaPipe' : 'Not installed (the automatic setup is for Windows; see docs/TECHNICAL.md on GitHub)';
   $('#btn-wilor-setup').textContent = s.usable ? 'Repair…' : 'Install…';
   $('#btn-wilor-setup').disabled = busy || !s.windows;
 }

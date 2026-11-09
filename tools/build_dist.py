@@ -174,12 +174,12 @@ def pack(stub, app, target, stamp):
 
 def main():
     if sys.platform != "win32":  # (the one-file launcher is a Windows program; a macOS .app / Linux build: not yet)
-        raise SystemExit("build_dist.py makes the Windows app. On macOS / Linux run from source: README "
+        raise SystemExit("build_dist.py makes the Windows app. On macOS / Linux run from source: docs/TECHNICAL.md "
                          "\"macOS and Linux\".")
     os.chdir(ROOT)
     missing = [f for f in VIEWER_LIBS if not os.path.exists(os.path.join(WEB, "lib", f))]
     if missing:
-        raise SystemExit(f"{WEB}/lib is missing {missing} (three.js 0.160.0 / three-vrm 3.4.0, see README)")
+        raise SystemExit(f"{WEB}/lib is missing {missing} (three.js 0.160.0 / three-vrm 3.4.0, see docs/TECHNICAL.md)")
     sys.path.insert(0, ROOT)
     from avatarstudio.version import VERSION
     stamp = time.strftime("%Y%m%d-%H%M%S")

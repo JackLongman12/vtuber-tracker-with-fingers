@@ -59,7 +59,7 @@ they are one more reason Avatar Studio is for non-commercial use.
 ## Optional: WiLoR fingers (not included)
 
 The WiLoR finger helper (`avatarstudio/tracking/wilor_server.py`) runs in a separate environment, `.venv_wilor`,
-which you set up yourself (README, "WiLoR fingers"). None of the following is in the app, in models.zip or in this
+which you set up yourself (docs/TECHNICAL.md, "WiLoR fingers"). None of the following is in the app, in models.zip or in this
 repository; by installing them you accept their licences yourself:
 
 | Component | Licence |

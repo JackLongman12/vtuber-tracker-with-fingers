@@ -1,7 +1,7 @@
 # Developing Avatar Studio
 
 How the project is laid out, how to run it from source, and how to build and publish a new version. What the app
-does and how well is in the [README](../README.md).
+does and how well is in the [technical notes](TECHNICAL.md) (the [README](../README.md) is the user guide).
 
 ## Layout
 
@@ -83,7 +83,7 @@ python -m venv .venv
 ```
 `fetch_models.py` downloads `models.zip` from the repository's "models" release (whoever has the model files
 publishes them with `tools/release.py --models`). WiLoR fingers are optional and need their own environment,
-`.venv_wilor` with PyTorch (README "WiLoR fingers").
+`.venv_wilor` with PyTorch (docs/TECHNICAL.md "WiLoR fingers").
 
 Where things are at run time (`avatarstudio/core/paths.py`): the working folder is the project folder (models are
 found as `models/...`); your data is in `data/` (packaged: `%APPDATA%\AvatarStudio`); `AVATARSTUDIO_DATA` points
@@ -139,7 +139,7 @@ damaged downloads; it doesn't prove who made the file (that would need code sign
   with it, and the window stays responsive.
 - New settings: a field in `core/settings.py` (default + comment), a row in the `SETTINGS` list in
   `ui/web/app.js`, and the engine reads it from `settings` (changes arrive through `change_settings`).
-- Measure before and after a change that could affect speed or quality (the README records the numbers).
+- Measure before and after a change that could affect speed or quality (docs/TECHNICAL.md records the numbers).
 - A new library or model: add it to `THIRD_PARTY_NOTICES.md`. A model's licence text goes in `packaging/licenses`
   (packages bring their own). Nothing licensed non-commercial or "no derivatives" (WiLoR, MANO) goes into the app,
   `models/` or the repository: users install those themselves.
