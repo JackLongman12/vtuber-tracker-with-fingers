@@ -9,6 +9,8 @@ analysis.
 Developers: **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)** explains the project layout, setup, building and
 publishing updates.
 
+![Avatar Studio's Live page: the camera on the left, your 3D avatar on the right, calibration buttons and expressions below](docs/images/live.png)
+
 A free hobby project for personal, non-commercial use: the code is MIT, but some of the models and the data they
 were trained on are non-commercial (see [License](#license)).
 
@@ -655,6 +657,13 @@ for Perfect Sync models, the ARKit shapes are applied live, including hair and c
 VRM 1.0 sample model: it faced the camera and reproduced a crossed-arms pose with each arm on the correct side.
 
 ## Everything in one window
+| | |
+|---|---|
+| ![Settings page: face, lip sync, motion, camera and distance](docs/images/settings.png) | ![Personalize page: train your face, smoothing tuned to you, custom gestures](docs/images/personalize.png) |
+| **Settings:** face, lip sync, motion, camera and more, saved as you change them | **Personalize:** train your face, tune smoothing, teach your own hand signs |
+| ![Motion capture page: record for mocap, mocap a video](docs/images/mocap.png) | ![Check setup page: test avatar setup, measure latency, connect your VTuber app](docs/images/check.png) |
+| **Motion capture:** record a take or process a video into BVH, CSV and face curves | **Check setup:** test your avatar, measure the delay, see if your VTuber app is listening |
+
 `AvatarStudio.exe` (development: `python app.py`) opens one app window (`avatarstudio/ui/mainwindow.py`, `avatarstudio/ui/web/app.html`):
 - **Live:** the camera picture with what's tracked, and your 3D avatar, side by side (or only one of them). Below
   them: the calibration buttons (Neutral pose C, Vowels V, Hands K, Eye gaze G, Pause P), the expressions, and a
